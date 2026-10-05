@@ -1,0 +1,15 @@
+
+POST http://localhost:8080/api/validate_chirp
+Content-Type: application/json
+
+{
+    "body": "sample request"
+}
+
+###
+
+GET http://localhost:8080/admin/metrics 
+
+###
+
+GET http://localhost:8080/app/
