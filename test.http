@@ -1,10 +1,19 @@
 
-POST http://localhost:8080/api/validate_chirp
+POST http://localhost:8080/api/chirps
 Content-Type: application/json
 
 {
-    "body": "sample request"
+    "body": "hello",
+    "user_id": "35dbc00e-0baa-4e39-834b-a44e90eacac5"
 }
+
+###
+
+GET http://localhost:8080/api/chirps
+
+### 
+
+GET http://localhost:8080/api/chirps/6672b95c-e32d-452b-a467-8a89dbddf6b6
 
 ###
 
@@ -13,3 +22,19 @@ GET http://localhost:8080/admin/metrics
 ###
 
 GET http://localhost:8080/app/
+
+###
+
+POST http://localhost:8080/api/users
+Content-Type: application/json
+
+{
+    "email": "user@example.com"
+}
+
+###
+
+POST http://localhost:8080/admin/reset
+
+###
+ 

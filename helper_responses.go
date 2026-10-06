@@ -7,35 +7,28 @@ import (
 )
 
 func respondWithError(w http.ResponseWriter, code int, msg string, err error) {
-	log.Printf(msg, ": ", err)
-
-	type returnErr struct {
+	if err != nil {
+		log.Println(err)
+	}
+	if code > 499 {
+		log.Printf("Responding with 5XX error: %s", msg)
+	}
+	type errorResponse struct {
 		Error string `json:"error"`
 	}
-
-	respBody := returnErr{
+	respondWithJSON(w, code, errorResponse{
 		Error: msg,
-	}
-
-	data, err := json.Marshal(respBody)
-	if err != nil {
-		log.Printf("Error marshalling JSON error response: %s", err)
-		w.WriteHeader(500)
-		return
-	}
-
-	w.WriteHeader(code)
-	w.Write(data)
+	})
 }
 
 func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
+	w.Header().Set("Content-Type", "application/json")
 	data, err := json.Marshal(payload)
 	if err != nil {
-		respondWithError(w, 500, "Error marshalling JSON response", err)
+		log.Printf("Error marshalling JSON: %s", err)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-
-	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	w.Write(data)
 }
