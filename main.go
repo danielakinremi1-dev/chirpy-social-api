@@ -16,7 +16,8 @@ import (
 type apiConfig struct {
 	fileserverHits atomic.Int32
 	db             *database.Queries
-	auth           string
+	authLevel      string
+	secret         string
 }
 
 func main() {
@@ -25,6 +26,7 @@ func main() {
 
 	dbURL := os.Getenv("DB_URL")
 	platform := os.Getenv("PLATFORM")
+	secret := os.Getenv("SECRET")
 
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
@@ -36,7 +38,7 @@ func main() {
 	const filepathRoot = "."
 	const port = "8080"
 
-	apiCfg := &apiConfig{db: dbQueries, auth: platform}
+	apiCfg := &apiConfig{db: dbQueries, authLevel: platform, secret: secret}
 
 	mux := http.NewServeMux()
 	fileHandler := http.FileServer(http.Dir(filepathRoot))
@@ -44,11 +46,14 @@ func main() {
 	mux.Handle("/app/", http.StripPrefix("/app", apiCfg.middlewareMetricsInc(fileHandler)))
 	mux.HandleFunc("GET /api/healthz", handlerReadiness)
 	mux.HandleFunc("POST /api/users", apiCfg.handlerUsers)
+	mux.HandleFunc("POST /api/login", apiCfg.handlerLogin)
 	mux.HandleFunc("POST /api/chirps", apiCfg.handlerPostChirps)
 	mux.HandleFunc("GET /api/chirps", apiCfg.handlerGetChirps)
 	mux.HandleFunc("GET /api/chirps/{chirpID}", apiCfg.handlerChirp)
 	mux.HandleFunc("GET /admin/metrics", apiCfg.handlerMetrics)
 	mux.HandleFunc("POST /admin/reset", apiCfg.handlerReset)
+	mux.HandleFunc("POST /api/refresh", apiCfg.handlerRefresh)
+	mux.HandleFunc("POST /api/revoke", apiCfg.handlerRevoke)
 
 	srv := &http.Server{
 		Addr:    ":" + port,

@@ -2,10 +2,12 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/danielakinremi1-dev/chirpy/projects/internal/auth"
 	"github.com/danielakinremi1-dev/chirpy/projects/internal/database"
 	"github.com/google/uuid"
 )
@@ -13,8 +15,7 @@ import (
 func (cfg *apiConfig) handlerPostChirps(w http.ResponseWriter, req *http.Request) {
 
 	type parameter struct {
-		Body    string    `json:"body"`
-		User_ID uuid.UUID `json:"user_id"`
+		Body string `json:"body"`
 	}
 
 	type returnVals struct {
@@ -33,17 +34,27 @@ func (cfg *apiConfig) handlerPostChirps(w http.ResponseWriter, req *http.Request
 		return
 	}
 
+	bearerToken, err := auth.GetBearerToken(req.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Error parsing user token", err)
+		return
+	}
+	userID, err := auth.ValidateJWT(bearerToken, cfg.secret)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Invalid user token", err)
+		return
+	}
+
 	if len(params.Body) > 140 {
-		respondWithError(w, http.StatusBadRequest, "Chirp is too long", err)
+		respondWithError(w, http.StatusBadRequest, "Chirp is too long", fmt.Errorf("Max chirp length exceeded"))
 		return
 	}
 	params.Body = filterBadWords(params.Body)
 
 	queryArgs := database.CreateChirpParams{
 		Body:   params.Body,
-		UserID: params.User_ID,
+		UserID: userID,
 	}
-
 	chirpData, err := cfg.db.CreateChirp(req.Context(), queryArgs)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Error creating new chirp", err)

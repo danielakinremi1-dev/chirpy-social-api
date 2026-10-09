@@ -1,12 +1,30 @@
 
 POST http://localhost:8080/api/chirps
 Content-Type: application/json
+Authorization: Bearer <redacted-jwt>
 
 {
-    "body": "hello",
-    "user_id": "35dbc00e-0baa-4e39-834b-a44e90eacac5"
+    "body": "hello"
+}
+###
+
+POST http://localhost:8080/api/users
+Content-Type: application/json
+
+{
+    "email": "user@example.com",
+    "password": "<redacted>"
 }
 
+###
+
+POST http://localhost:8080/api/login
+Content-Type: application/json
+
+{
+    "email": "user@example.com",
+    "password": "<redacted>"
+}
 ###
 
 GET http://localhost:8080/api/chirps
@@ -23,14 +41,7 @@ GET http://localhost:8080/admin/metrics
 
 GET http://localhost:8080/app/
 
-###
 
-POST http://localhost:8080/api/users
-Content-Type: application/json
-
-{
-    "email": "user@example.com"
-}
 
 ###
 
