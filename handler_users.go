@@ -19,10 +19,11 @@ func (cfg *apiConfig) handlerUsers(w http.ResponseWriter, req *http.Request) {
 	}
 
 	type returnVals struct {
-		ID         uuid.UUID `json:"id"`
-		Created_At time.Time `json:"created_at"`
-		Updated_At time.Time `json:"updated_at"`
-		Email      string    `json:"email"`
+		ID          uuid.UUID `json:"id"`
+		Created_At  time.Time `json:"created_at"`
+		Updated_At  time.Time `json:"updated_at"`
+		Email       string    `json:"email"`
+		IsChirpyRed bool      `json:"is_chirpy_red"`
 	}
 
 	decoder := json.NewDecoder(req.Body)
@@ -40,7 +41,7 @@ func (cfg *apiConfig) handlerUsers(w http.ResponseWriter, req *http.Request) {
 
 	hashPassword, err := auth.HashPassword(params.Password)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Error encoding user password", err)
+		respondWithError(w, http.StatusInternalServerError, "Error storing hashed user password", err)
 		return
 	}
 
@@ -56,10 +57,11 @@ func (cfg *apiConfig) handlerUsers(w http.ResponseWriter, req *http.Request) {
 	}
 
 	payload := returnVals{
-		ID:         userData.ID,
-		Created_At: userData.CreatedAt,
-		Updated_At: userData.UpdatedAt,
-		Email:      userData.Email,
+		ID:          userData.ID,
+		Created_At:  userData.CreatedAt,
+		Updated_At:  userData.UpdatedAt,
+		Email:       userData.Email,
+		IsChirpyRed: userData.IsChirpyRed,
 	}
 
 	respondWithJSON(w, http.StatusCreated, payload)

@@ -7,7 +7,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func (cfg *apiConfig) handlerChirp(w http.ResponseWriter, req *http.Request) {
+func (cfg *apiConfig) handlerGetChirp(w http.ResponseWriter, req *http.Request) {
 
 	type chirps struct {
 		ID         uuid.UUID `json:"id"`

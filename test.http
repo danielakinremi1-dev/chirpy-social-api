@@ -1,4 +1,39 @@
 
+
+GET http://localhost:8080/api/chirps?sort=asc
+ 
+###
+
+POST http://localhost:8080/api/polka/webhooks
+Content-Type: application/json
+Authorization: ApiKey <redacted-api-key>
+
+{
+  "event": "user.upgraded",
+  "data": {
+    "user_id": "ec9552ed-f833-4beb-9027-8a2792ba8044"
+  }
+}
+ 
+###
+
+DELETE http://localhost:8080/api/chirps/608d6391-2ed8-4712-9174-8f8489534908
+Content-Type: application/json
+Authorization: Bearer <redacted-jwt>
+
+ 
+###
+
+PUT http://localhost:8080/api/users
+Content-Type: application/json
+Authorization: Bearer <redacted-jwt>
+
+{
+    "email": "user@example.com",
+    "password": "<redacted>"
+}
+###
+
 POST http://localhost:8080/api/chirps
 Content-Type: application/json
 Authorization: Bearer <redacted-jwt>
@@ -6,6 +41,15 @@ Authorization: Bearer <redacted-jwt>
 {
     "body": "hello"
 }
+###
+
+POST http://localhost:8080/api/revoke
+Authorization: Bearer <redacted-refresh-token>
+###
+
+POST http://localhost:8080/api/refresh
+Content-Type: application/json
+Authorization: Bearer <redacted-refresh-token>
 ###
 
 POST http://localhost:8080/api/users
@@ -27,11 +71,15 @@ Content-Type: application/json
 }
 ###
 
+GET http://localhost:8080/api/chirps?author_id=4ff63eea-0dc8-4d15-b844-21e8a1a2ddd0
+
+### 
+
 GET http://localhost:8080/api/chirps
 
 ### 
 
-GET http://localhost:8080/api/chirps/6672b95c-e32d-452b-a467-8a89dbddf6b6
+GET http://localhost:8080/api/608d6391-2ed8-4712-9174-8f8489534908
 
 ###
 

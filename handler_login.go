@@ -1,7 +1,9 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"time"
 
@@ -22,6 +24,7 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, req *http.Request) {
 		Created_At   time.Time `json:"created_at"`
 		Updated_At   time.Time `json:"updated_at"`
 		Email        string    `json:"email"`
+		IsChirpyRed  bool      `json:"is_chirpy_red"`
 		AccessToken  string    `json:"token"`
 		RefreshToken string    `json:"refresh_token"`
 	}
@@ -35,8 +38,11 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, req *http.Request) {
 	}
 
 	userData, err := cfg.db.GetUser(req.Context(), params.Email)
-	if err != nil {
-		respondWithError(w, http.StatusUnauthorized, "User email not found", err)
+	if errors.Is(err, sql.ErrNoRows) {
+		respondWithError(w, http.StatusNotFound, "User email not found", err)
+		return
+	} else if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Error retrieving user info", err)
 		return
 	}
 
@@ -69,6 +75,7 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, req *http.Request) {
 		Created_At:   userData.CreatedAt,
 		Updated_At:   userData.UpdatedAt,
 		Email:        userData.Email,
+		IsChirpyRed:  userData.IsChirpyRed,
 		AccessToken:  accessTokenString,
 		RefreshToken: refreshTokenData.Token,
 	}

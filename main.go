@@ -18,6 +18,7 @@ type apiConfig struct {
 	db             *database.Queries
 	authLevel      string
 	secret         string
+	polka_key      string
 }
 
 func main() {
@@ -27,6 +28,7 @@ func main() {
 	dbURL := os.Getenv("DB_URL")
 	platform := os.Getenv("PLATFORM")
 	secret := os.Getenv("SECRET")
+	polka_key := os.Getenv("POLKA_KEY")
 
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
@@ -38,7 +40,7 @@ func main() {
 	const filepathRoot = "."
 	const port = "8080"
 
-	apiCfg := &apiConfig{db: dbQueries, authLevel: platform, secret: secret}
+	apiCfg := &apiConfig{db: dbQueries, authLevel: platform, secret: secret, polka_key: polka_key}
 
 	mux := http.NewServeMux()
 	fileHandler := http.FileServer(http.Dir(filepathRoot))
@@ -46,14 +48,17 @@ func main() {
 	mux.Handle("/app/", http.StripPrefix("/app", apiCfg.middlewareMetricsInc(fileHandler)))
 	mux.HandleFunc("GET /api/healthz", handlerReadiness)
 	mux.HandleFunc("POST /api/users", apiCfg.handlerUsers)
+	mux.HandleFunc("PUT /api/users", apiCfg.handlerUpdateLogin)
 	mux.HandleFunc("POST /api/login", apiCfg.handlerLogin)
 	mux.HandleFunc("POST /api/chirps", apiCfg.handlerPostChirps)
-	mux.HandleFunc("GET /api/chirps", apiCfg.handlerGetChirps)
-	mux.HandleFunc("GET /api/chirps/{chirpID}", apiCfg.handlerChirp)
+	mux.HandleFunc("GET /api/chirps/?author_id={AuthorID}", apiCfg.handlerGetAllChirps)
+	mux.HandleFunc("GET /api/chirps/{chirpID}", apiCfg.handlerGetChirp)
+	mux.HandleFunc("DELETE /api/chirps/{chirpID}", apiCfg.handlerDeleteChirp)
 	mux.HandleFunc("GET /admin/metrics", apiCfg.handlerMetrics)
 	mux.HandleFunc("POST /admin/reset", apiCfg.handlerReset)
 	mux.HandleFunc("POST /api/refresh", apiCfg.handlerRefresh)
 	mux.HandleFunc("POST /api/revoke", apiCfg.handlerRevoke)
+	mux.HandleFunc("POST /api/polka/webhooks", apiCfg.handlerChirpyRed)
 
 	srv := &http.Server{
 		Addr:    ":" + port,

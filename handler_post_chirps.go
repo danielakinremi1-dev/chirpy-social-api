@@ -41,7 +41,7 @@ func (cfg *apiConfig) handlerPostChirps(w http.ResponseWriter, req *http.Request
 	}
 	userID, err := auth.ValidateJWT(bearerToken, cfg.secret)
 	if err != nil {
-		respondWithError(w, http.StatusUnauthorized, "Invalid user token", err)
+		respondWithError(w, http.StatusUnauthorized, "Invalid access token", err)
 		return
 	}
 
