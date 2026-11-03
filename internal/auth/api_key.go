@@ -12,7 +12,10 @@ func GetAPIKey(headers http.Header) (string, error) {
 		return "", fmt.Errorf("No Authorization parameters provided")
 	}
 
-	auth = strings.TrimPrefix(auth, "ApiKey ")
+	fields := strings.Fields(auth)
+	if len(fields) != 2 || fields[0] != "ApiKey" {
+		return "", fmt.Errorf("Malformed Authorization header")
+	}
 
-	return auth, nil
+	return fields[1], nil
 }

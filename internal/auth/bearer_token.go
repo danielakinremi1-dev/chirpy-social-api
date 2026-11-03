@@ -12,7 +12,10 @@ func GetBearerToken(headers http.Header) (string, error) {
 		return "", fmt.Errorf("No Authorization parameters provided")
 	}
 
-	auth = strings.TrimPrefix(auth, "Bearer ")
+	fields := strings.Fields(auth)
+	if len(fields) != 2 || fields[0] != "Bearer" {
+		return "", fmt.Errorf("Malformed Authorization header")
+	}
 
-	return auth, nil
+	return fields[1], nil
 }
