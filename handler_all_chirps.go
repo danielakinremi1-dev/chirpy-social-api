@@ -5,7 +5,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/danielakinremi1-dev/chirpy/projects/internal/database"
+	"github.com/danielakinremi1-dev/chirpy-social-api/internal/database"
 	"github.com/google/uuid"
 )
 

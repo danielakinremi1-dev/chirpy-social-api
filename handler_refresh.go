@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/danielakinremi1-dev/chirpy/projects/internal/auth"
+	"github.com/danielakinremi1-dev/chirpy-social-api/internal/auth"
 )
 
 func (cfg *apiConfig) handlerRefresh(w http.ResponseWriter, req *http.Request) {

@@ -1,4 +1,4 @@
-module github.com/danielakinremi1-dev/chirpy/projects
+module github.com/danielakinremi1-dev/chirpy-social-api
 
 go 1.27.1
 

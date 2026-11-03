@@ -8,7 +8,7 @@ import (
 	"os"
 	"sync/atomic"
 
-	"github.com/danielakinremi1-dev/chirpy/projects/internal/database"
+	"github.com/danielakinremi1-dev/chirpy-social-api/internal/database"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )

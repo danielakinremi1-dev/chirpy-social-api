@@ -18,8 +18,8 @@ Requirements: Go 1.27.1 or newer, PostgreSQL, and the [Goose](https://github.com
 1. Clone the repository and enter the project directory:
 
    ```sh
-   git clone https://github.com/danielakinremi1-dev/chirpy.git
-   cd chirpy
+   git clone https://github.com/danielakinremi1-dev/chirpy-social-api.git
+   cd chirpy-social-api
    ```
 
    Install Goose if needed: `go install github.com/pressly/goose/v3/cmd/goose@latest`.

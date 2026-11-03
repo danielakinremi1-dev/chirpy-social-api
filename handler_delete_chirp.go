@@ -3,7 +3,7 @@ package main
 import (
 	"net/http"
 
-	"github.com/danielakinremi1-dev/chirpy/projects/internal/auth"
+	"github.com/danielakinremi1-dev/chirpy-social-api/internal/auth"
 	"github.com/google/uuid"
 )
 
