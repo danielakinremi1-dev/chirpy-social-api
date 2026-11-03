@@ -31,7 +31,7 @@ func (cfg *apiConfig) handlerRefresh(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	accessTokenString, err := auth.MakeJWT(refreshTokenData.UserID, cfg.secret)
+	accessTokenString, err := auth.MakeJWT(refreshTokenData.UserID, cfg.secret, time.Hour)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Error creating access token", err)
 		return

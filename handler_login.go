@@ -52,7 +52,7 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	accessTokenString, err := auth.MakeJWT(userData.ID, cfg.secret)
+	accessTokenString, err := auth.MakeJWT(userData.ID, cfg.secret, time.Hour)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Error creating access token", err)
 		return
