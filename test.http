@@ -1,99 +1,96 @@
+# Requests for the VS Code REST Client extension.
+# Run "Create user" and "Login" first; later requests reuse the tokens
+# from the login response. The webhook key is read from POLKA_KEY in .env.
 
+@baseUrl = http://localhost:8080
+@email = user@example.com
+@password = change-me-123
+@apiKey = {{$dotenv POLKA_KEY}}
+@token = {{login.response.body.$.token}}
+@refreshToken = {{login.response.body.$.refresh_token}}
+@userId = {{login.response.body.$.id}}
+@chirpId = {{createChirp.response.body.$.id}}
 
-GET http://localhost:8080/api/chirps?sort=asc
- 
-###
-
-POST http://localhost:8080/api/polka/webhooks
+### Create user
+POST {{baseUrl}}/api/users
 Content-Type: application/json
-Authorization: ApiKey <redacted-api-key>
 
 {
-  "event": "user.upgraded",
-  "data": {
-    "user_id": "ec9552ed-f833-4beb-9027-8a2792ba8044"
-  }
+    "email": "{{email}}",
+    "password": "{{password}}"
 }
- 
-###
 
-DELETE http://localhost:8080/api/chirps/608d6391-2ed8-4712-9174-8f8489534908
+### Login
+# @name login
+POST {{baseUrl}}/api/login
 Content-Type: application/json
-Authorization: Bearer <redacted-jwt>
-
- 
-###
-
-PUT http://localhost:8080/api/users
-Content-Type: application/json
-Authorization: Bearer <redacted-jwt>
 
 {
-    "email": "user@example.com",
-    "password": "<redacted>"
+    "email": "{{email}}",
+    "password": "{{password}}"
 }
-###
 
-POST http://localhost:8080/api/chirps
+### Update user
+PUT {{baseUrl}}/api/users
 Content-Type: application/json
-Authorization: Bearer <redacted-jwt>
+Authorization: Bearer {{token}}
+
+{
+    "email": "{{email}}",
+    "password": "{{password}}"
+}
+
+### Create chirp
+# @name createChirp
+POST {{baseUrl}}/api/chirps
+Content-Type: application/json
+Authorization: Bearer {{token}}
 
 {
     "body": "hello"
 }
-###
 
-POST http://localhost:8080/api/revoke
-Authorization: Bearer <redacted-refresh-token>
-###
+### List chirps
+GET {{baseUrl}}/api/chirps
 
-POST http://localhost:8080/api/refresh
+### List chirps, ascending
+GET {{baseUrl}}/api/chirps?sort=asc
+
+### List chirps by author
+GET {{baseUrl}}/api/chirps?author_id={{userId}}
+
+### Get chirp
+GET {{baseUrl}}/api/chirps/{{chirpId}}
+
+### Delete chirp
+DELETE {{baseUrl}}/api/chirps/{{chirpId}}
+Authorization: Bearer {{token}}
+
+### Refresh access token
+POST {{baseUrl}}/api/refresh
+Authorization: Bearer {{refreshToken}}
+
+### Revoke refresh token
+POST {{baseUrl}}/api/revoke
+Authorization: Bearer {{refreshToken}}
+
+### Polka webhook: upgrade user
+POST {{baseUrl}}/api/polka/webhooks
 Content-Type: application/json
-Authorization: Bearer <redacted-refresh-token>
-###
-
-POST http://localhost:8080/api/users
-Content-Type: application/json
+Authorization: ApiKey {{apiKey}}
 
 {
-    "email": "user@example.com",
-    "password": "<redacted>"
+  "event": "user.upgraded",
+  "data": {
+    "user_id": "{{userId}}"
+  }
 }
 
-###
+### Admin metrics
+GET {{baseUrl}}/admin/metrics
 
-POST http://localhost:8080/api/login
-Content-Type: application/json
+### Static app
+GET {{baseUrl}}/app/
 
-{
-    "email": "user@example.com",
-    "password": "<redacted>"
-}
-###
-
-GET http://localhost:8080/api/chirps?author_id=4ff63eea-0dc8-4d15-b844-21e8a1a2ddd0
-
-### 
-
-GET http://localhost:8080/api/chirps
-
-### 
-
-GET http://localhost:8080/api/608d6391-2ed8-4712-9174-8f8489534908
-
-###
-
-GET http://localhost:8080/admin/metrics 
-
-###
-
-GET http://localhost:8080/app/
-
-
-
-###
-
-POST http://localhost:8080/admin/reset
-
-###
- 
+### Admin reset (dev only)
+POST {{baseUrl}}/admin/reset
