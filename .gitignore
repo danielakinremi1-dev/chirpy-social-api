@@ -1,6 +1,5 @@
 out
 .env
-Makefile
 
 # Build outputs
 projects
