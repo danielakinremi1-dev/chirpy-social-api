@@ -1,6 +1,8 @@
 package main
 
 import (
+	"database/sql"
+	"errors"
 	"net/http"
 
 	"github.com/danielakinremi1-dev/chirpy-social-api/internal/auth"
@@ -22,13 +24,16 @@ func (cfg *apiConfig) handlerDeleteChirp(w http.ResponseWriter, req *http.Reques
 
 	parsedID, err := uuid.Parse(req.PathValue("chirpID"))
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Error parsing provided chirp ID", err)
+		respondWithError(w, http.StatusBadRequest, "Invalid chirp ID", err)
 		return
 	}
 
 	chirpData, err := cfg.db.GetChirp(req.Context(), parsedID)
-	if err != nil {
+	if errors.Is(err, sql.ErrNoRows) {
 		respondWithError(w, http.StatusNotFound, "Chirp ID not found", err)
+		return
+	} else if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Error retrieving chirp", err)
 		return
 	}
 

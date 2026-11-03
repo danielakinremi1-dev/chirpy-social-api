@@ -42,7 +42,7 @@ func (cfg *apiConfig) handlerUpdateLogin(w http.ResponseWriter, req *http.Reques
 	params := parameter{}
 	err = decoder.Decode(&params)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Error decoding request data", err)
+		respondWithError(w, http.StatusBadRequest, "Invalid request body", err)
 		return
 	}
 

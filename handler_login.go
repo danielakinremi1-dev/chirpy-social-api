@@ -12,6 +12,8 @@ import (
 	"github.com/google/uuid"
 )
 
+var dummyPasswordHash, _ = auth.HashPassword("chirpy-dummy-password")
+
 func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, req *http.Request) {
 
 	type parameter struct {
@@ -33,13 +35,15 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, req *http.Request) {
 	params := parameter{}
 	err := decoder.Decode(&params)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Error decoding request data", err)
+		respondWithError(w, http.StatusBadRequest, "Invalid request body", err)
 		return
 	}
 
 	userData, err := cfg.db.GetUser(req.Context(), params.Email)
 	if errors.Is(err, sql.ErrNoRows) {
-		respondWithError(w, http.StatusNotFound, "User email not found", err)
+		// Hash anyway so unknown emails take as long as wrong passwords.
+		auth.CheckPasswordHash(params.Password, dummyPasswordHash)
+		respondWithError(w, http.StatusUnauthorized, "Incorrect email or password", err)
 		return
 	} else if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Error retrieving user info", err)
@@ -48,7 +52,7 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, req *http.Request) {
 
 	match, err := auth.CheckPasswordHash(params.Password, userData.HashedPassword)
 	if err != nil || !match {
-		respondWithError(w, http.StatusUnauthorized, "Incorrect password", err)
+		respondWithError(w, http.StatusUnauthorized, "Incorrect email or password", err)
 		return
 	}
 
