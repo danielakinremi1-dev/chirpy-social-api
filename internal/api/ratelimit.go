@@ -3,7 +3,6 @@ package api
 import (
 	"fmt"
 	"math"
-	"net"
 	"net/http"
 	"sync"
 	"time"
@@ -13,8 +12,9 @@ import (
 
 // ipRateLimiter is a per-client-IP token bucket.
 type ipRateLimiter struct {
-	every time.Duration
-	burst int
+	every      time.Duration
+	burst      int
+	trustProxy bool
 
 	mu        sync.Mutex
 	clients   map[string]*clientLimiter
@@ -27,12 +27,13 @@ type clientLimiter struct {
 }
 
 // newIPRateLimiter allows each IP a burst of requests, refilled at one token
-// per every.
-func newIPRateLimiter(every time.Duration, burst int) *ipRateLimiter {
+// per every. trustProxy is passed to clientIP.
+func newIPRateLimiter(every time.Duration, burst int, trustProxy bool) *ipRateLimiter {
 	return &ipRateLimiter{
-		every:   every,
-		burst:   burst,
-		clients: make(map[string]*clientLimiter),
+		every:      every,
+		burst:      burst,
+		trustProxy: trustProxy,
+		clients:    make(map[string]*clientLimiter),
 	}
 }
 
@@ -62,15 +63,10 @@ func (l *ipRateLimiter) allow(ip string) bool {
 	return c.limiter.Allow()
 }
 
-// limit responds with 429 when the client IP has used up its requests. The IP
-// comes from RemoteAddr; behind a proxy, every client shares the proxy's IP.
+// limit responds with 429 when the client IP has used up its requests.
 func (l *ipRateLimiter) limit(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ip, _, err := net.SplitHostPort(r.RemoteAddr)
-		if err != nil {
-			ip = r.RemoteAddr
-		}
-		if !l.allow(ip) {
+		if !l.allow(clientIP(r, l.trustProxy)) {
 			w.Header().Set("Retry-After", fmt.Sprint(int(math.Ceil(l.every.Seconds()))))
 			respondWithError(w, r, http.StatusTooManyRequests, "Too many requests, try again later", nil)
 			return

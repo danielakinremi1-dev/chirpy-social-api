@@ -147,14 +147,15 @@ CI runs formatting, vet, golangci-lint, the full test suite with the race detect
 | `DB_URL` | Yes | Postgres connection string. |
 | `SECRET` | Yes | JWT signing key. Generate one with `openssl rand -base64 64`. |
 | `POLKA_KEY` | Yes | API key the Polka webhook must send. |
-| `PLATFORM` | No | `dev` enables `POST /admin/reset`. |
+| `PLATFORM` | No | `dev` enables `POST /admin/reset`. The server refuses to start with `dev` on Render. |
 | `PORT` | No | Listen port. Default `8080`. |
 | `MIGRATE_ON_START` | No | `true` applies pending migrations at startup. |
+| `TRUST_PROXY` | No | `true` takes the client IP (for rate limiting and logs) from the last `X-Forwarded-For` entry, which the reverse proxy appends. Only enable it behind such a proxy. |
 
 ## What I'd do next
 
 - **Refresh-token reuse detection:** if a revoked refresh token is presented, revoke every token descended from the same login, since reuse means a token was stolen.
 - **Idempotent webhooks:** store each event ID and ignore replays.
-- **Proxy-aware, shared rate limiting:** read the client IP from a trusted proxy header, and keep counters in Redis so limits hold across several instances.
+- **Shared rate limiting:** keep the login counters in Redis so limits hold across several instances, not just one process.
 - **Metrics:** a Prometheus `/metrics` endpoint with request counts and latency histograms, replacing the HTML hit counter.
 - **Follows and a feed:** a `follows` table and a `GET /api/feed` timeline, to show join and index design under a heavier read path.

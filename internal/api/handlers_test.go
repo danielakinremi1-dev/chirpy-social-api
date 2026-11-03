@@ -220,7 +220,7 @@ func TestLoginRateLimit(t *testing.T) {
 }
 
 func TestIPRateLimiterSweepsIdleClients(t *testing.T) {
-	l := newIPRateLimiter(time.Second, 1)
+	l := newIPRateLimiter(time.Second, 1, false)
 	if !l.allow("192.0.2.1") {
 		t.Fatal("first request should be allowed")
 	}

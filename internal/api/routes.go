@@ -35,5 +35,5 @@ func (a *API) Routes() http.Handler {
 	mux.HandleFunc("GET /admin/metrics", a.handleMetrics)
 	mux.HandleFunc("POST /admin/reset", a.handleReset)
 
-	return withRequestID(logRequests(recoverPanics(limitBodySize(mux))))
+	return withRequestID(a.logRequests(recoverPanics(limitBodySize(mux))))
 }

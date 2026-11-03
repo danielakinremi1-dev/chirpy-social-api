@@ -84,7 +84,7 @@ func (rec *statusRecorder) Unwrap() http.ResponseWriter {
 	return rec.ResponseWriter
 }
 
-func logRequests(next http.Handler) http.Handler {
+func (a *API) logRequests(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		rec := &statusRecorder{ResponseWriter: w}
@@ -96,6 +96,7 @@ func logRequests(next http.Handler) http.Handler {
 			"method", r.Method,
 			"path", r.URL.Path,
 			"status", rec.status,
+			"client_ip", clientIP(r, a.trustProxy),
 			"duration_ms", time.Since(start).Milliseconds(),
 		)
 	})

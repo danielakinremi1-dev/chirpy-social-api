@@ -2,6 +2,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -14,6 +15,9 @@ type Config struct {
 	Port      string
 	// MigrateOnStart applies pending database migrations before serving.
 	MigrateOnStart bool
+	// TrustProxy takes the client IP from the X-Forwarded-For entry appended
+	// by the reverse proxy in front of the server, instead of the connection.
+	TrustProxy bool
 }
 
 // Load reads the configuration using getenv, which is normally os.Getenv.
@@ -26,6 +30,7 @@ func Load(getenv func(string) string) (Config, error) {
 		Port:      getenv("PORT"),
 
 		MigrateOnStart: getenv("MIGRATE_ON_START") == "true",
+		TrustProxy:     getenv("TRUST_PROXY") == "true",
 	}
 	if cfg.Port == "" {
 		cfg.Port = "8080"
@@ -44,6 +49,12 @@ func Load(getenv func(string) string) (Config, error) {
 	}
 	if len(missing) > 0 {
 		return Config{}, fmt.Errorf("missing required environment variables: %s", strings.Join(missing, ", "))
+	}
+
+	// PLATFORM=dev enables POST /admin/reset, which deletes every user. Render
+	// always sets RENDER=true, so refuse to start there rather than expose it.
+	if cfg.Platform == "dev" && getenv("RENDER") == "true" {
+		return Config{}, errors.New("PLATFORM=dev is not allowed on Render: it enables POST /admin/reset")
 	}
 
 	return cfg, nil
