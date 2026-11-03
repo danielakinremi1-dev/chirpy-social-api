@@ -42,7 +42,7 @@ Requirements: Go 1.27.1 or newer, PostgreSQL, and the [Goose](https://github.com
 5. Start the server:
 
    ```sh
-   go run .
+   go run ./cmd/chirpy
    ```
 
 The server listens on port `8080`. Go downloads the project dependencies on the first run. 

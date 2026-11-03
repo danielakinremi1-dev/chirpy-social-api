@@ -7,3 +7,6 @@ projects
 
 # Local planning notes
 chirpy-upgrade-plan.md
+
+# go build ./cmd/chirpy output
+/chirpy
