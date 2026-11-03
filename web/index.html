@@ -1,7 +1,82 @@
-<html>
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Chirpy API</title>
+    <style>
+        :root {
+            color-scheme: light dark;
+            --bg: #f6f7f8;
+            --fg: #1f2328;
+            --muted: #59636e;
+            --accent: #2b7bb9;
+            --card: #ffffff;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #4a4a4a;
+                --fg: #f0f0f0;
+                --muted: #c8c8c8;
+                --accent: #f2a541;
+                --card: #3d3d3d;
+            }
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            background: var(--bg);
+            color: var(--fg);
+            font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+        }
+
+        main {
+            max-width: 32rem;
+            margin: 1rem;
+            padding: 2rem;
+            border-radius: 12px;
+            background: var(--card);
+            text-align: center;
+        }
+
+        img {
+            width: 128px;
+            height: 128px;
+            border-radius: 12px;
+        }
+
+        p {
+            color: var(--muted);
+            line-height: 1.5;
+        }
+
+        a {
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        code {
+            font-size: 0.95em;
+        }
+    </style>
+</head>
 
 <body>
-    <h1>Welcome to Chirpy</h1>
+    <main>
+        <img src="assets/logo.png" alt="Chirpy logo">
+        <h1>Chirpy API</h1>
+        <p>A microblogging REST API built with Go and PostgreSQL. This server has no web client; everything
+            happens over JSON endpoints under <code>/api</code>.</p>
+        <p>
+            <a href="/docs">API documentation</a> ·
+            <a href="https://github.com/danielakinremi1-dev/chirpy-social-api">Source on GitHub</a>
+        </p>
+    </main>
 </body>
 
 </html>
