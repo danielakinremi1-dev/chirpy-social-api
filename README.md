@@ -1,69 +1,160 @@
 # Chirpy
 
-A RESTful API built with Go and PostgreSQL that simulates the backend of a microblogging platform (similar to Twitter/X).  
+[![CI](https://github.com/danielakinremi1-dev/chirpy-social-api/actions/workflows/ci.yml/badge.svg)](https://github.com/danielakinremi1-dev/chirpy-social-api/actions/workflows/ci.yml)
+[![Go version](https://img.shields.io/github/go-mod/go-version/danielakinremi1-dev/chirpy-social-api)](go.mod)
 
-## Goal 
+A microblogging REST API in Go and PostgreSQL, with JWT auth, rotating refresh tokens, cursor pagination, and tests against a real database.
 
-This project was built to practice core backend architecture and Go fundamentals without relying on heavy web frameworks. Key areas explored include:
+Started from the [boot.dev](https://www.boot.dev) HTTP servers course; extended with refresh-token rotation, keyset pagination, a layered package structure, structured logging, rate limiting, an OpenAPI spec, Postgres integration tests, Docker, and CI.
 
-- **HTTP Server Routing & Middleware:** Structuring idiomatic Go HTTP handlers, custom routing, and request metrics.
-- **Authentication & Security:** Implementing password hashing with `bcrypt`, stateless authentication with JWTs, and secure refresh token rotation.
-- **Database Management:** Writing raw SQL queries and generating type-safe Go database code using `sqlc` and PostgreSQL.
-- **RESTful API Design:** Designing clean endpoints with CRUD operations, webhook handling, and query-parameter-based sorting and filtering.
+## Quickstart
 
-## Install and run
+With Docker installed:
 
-Requirements: Go 1.27.1 or newer, PostgreSQL, and the [Goose](https://github.com/pressly/goose) migration CLI.
+```sh
+git clone https://github.com/danielakinremi1-dev/chirpy-social-api.git
+cd chirpy-social-api
+docker compose up --build
+```
 
-1. Clone the repository and enter the project directory:
+That starts Postgres, applies the migrations, and serves the API on port 8080. Open <http://localhost:8080/docs> for interactive API docs.
 
-   ```sh
-   git clone https://github.com/danielakinremi1-dev/chirpy-social-api.git
-   cd chirpy-social-api
-   ```
+## Features
 
-   Install Goose if needed: `go install github.com/pressly/goose/v3/cmd/goose@latest`.
-2. Create an empty PostgreSQL database named `chirpy`.
-3. Set the following environment variables in your shell or in a `.env` file at the project root:
+- **Accounts and auth:** argon2id password hashing, one-hour JWT access tokens, and single-use refresh tokens that rotate on every refresh.
+- **Chirps:** 140-character posts with a word filter, author filtering, and cursor pagination.
+- **Webhooks:** a payment-provider webhook authenticated by API key, compared in constant time.
+- **Operations:** JSON logs with a request ID on every line, per-IP login rate limiting, request size limits, timeouts, panic recovery, and graceful shutdown.
+- **Docs:** an OpenAPI 3 spec served with Swagger UI at `/docs`, checked against the real routes in a test.
 
-   ```dotenv
-   DB_URL=postgres://USER:PASSWORD@localhost:5432/chirpy?sslmode=disable
-   PLATFORM=dev
-   SECRET=replace-with-a-long-random-secret
-   POLKA_KEY=replace-with-your-webhook-api-key
-   ```
+## Architecture
 
-   `PLATFORM=dev` enables the destructive admin reset endpoint; use another value outside local development. Keep `SECRET` and `POLKA_KEY` private.
-4. Apply the database migrations:
+```mermaid
+flowchart LR
+    client([Client]) --> mw
+    polka([Polka webhook]) --> mw
 
-   ```sh
-   goose -dir sql/schema postgres "$DB_URL" up
-   ```
-5. Start the server:
+    subgraph server [chirpy server]
+        mw["Middleware: request ID, logging,<br/>panic recovery, 1 MB body limit"] --> mux[Routes]
+        mux --> rl["Rate limiter<br/>(login only)"] --> handlers
+        mux --> auth["requireAuth<br/>(JWT → user ID)"] --> handlers
+        mux --> handlers[Handlers]
+        handlers --> store{{Store interface}}
+        store --> sqlstore["SQLStore<br/>(sqlc-generated queries)"]
+    end
 
-   ```sh
-   go run ./cmd/chirpy
-   ```
+    sqlstore --> pg[(PostgreSQL)]
+    fake["fakeStore<br/>(handler tests)"] -.-> store
+```
 
-The server listens on port `8080`. Go downloads the project dependencies on the first run. 
+Handlers depend on a small `Store` interface: sqlc's generated `Querier` plus an `InTx` method for transactions. Production uses Postgres; handler tests use an in-memory fake, and integration tests use a real Postgres in a container.
 
-## HTTP handlers
+```
+cmd/chirpy/          startup: config, database, HTTP server, graceful shutdown
+internal/api/        handlers, routes, middleware, response helpers
+internal/auth/       password hashing, JWTs, refresh tokens, header parsing
+internal/config/     environment variables → Config
+internal/database/   sqlc-generated query code
+sql/schema/          goose migrations (embedded in the binary)
+sql/queries/         SQL that sqlc compiles into Go
+api/openapi.yaml     OpenAPI 3 spec
+web/                 static landing page served at /app/
+```
 
-JSON endpoints accept and return JSON unless noted. Authenticated requests use `Authorization: Bearer <token>`; the webhook uses `Authorization: ApiKey <key>`.
+## Design decisions
 
-| Method and path | Use |
+**argon2id for passwords.** Argon2 won the Password Hashing Competition, and its argon2id variant is OWASP's first recommendation for password storage. Unlike bcrypt, it is memory-hard, which makes GPU and ASIC cracking much more expensive, and it has no 72-byte input limit. Login also hashes a dummy password when the email doesn't exist, so response time doesn't reveal which emails are registered.
+
+**Refresh-token rotation.** Every call to `/api/refresh` revokes the token presented and issues a new one, inside a single transaction. The revoke is a conditional `UPDATE ... WHERE revoked_at IS NULL`, so if two requests race with the same token, Postgres's row lock lets exactly one of them win; an integration test fires 8 concurrent refreshes and checks that one succeeds. A stolen refresh token is therefore usable at most once, and the legitimate client notices when its own refresh fails.
+
+**sqlc instead of an ORM.** Queries are plain SQL in `sql/queries`, checked against the schema at generation time and compiled into typed Go functions. There's no runtime reflection or query builder to learn, the SQL that runs is exactly the SQL in the repo, and CI fails if the generated code drifts from the queries (`sqlc diff`).
+
+**Cursor pagination instead of offsets.** `GET /api/chirps` pages with a cursor encoding the last row's `(created_at, id)`, and the query uses a row comparison (`(created_at, id) > ($1, $2)`) backed by a matching index. Unlike `OFFSET`, the cost doesn't grow with page depth, and inserts between requests don't make pages skip or repeat rows. The `id` tiebreaker keeps ordering stable when timestamps collide. The response body stays a plain JSON array, and the next cursor goes in the `X-Next-Cursor` header.
+
+**Timestamps as `TIMESTAMPTZ`.** All timestamps are stored as absolute instants, so the API reports the same time regardless of the database server's time zone.
+
+## API
+
+Full request and response schemas are in [api/openapi.yaml](api/openapi.yaml), or at `/docs` on a running server. Access tokens go in `Authorization: Bearer <token>`; the webhook uses `Authorization: ApiKey <key>`.
+
+| Method and path | Description |
 | --- | --- |
-| `GET /api/healthz` | Readiness check. |
-| `POST /api/users` | Create an account. Body: `{"email":"...","password":"..."}`. |
-| `PUT /api/users` | Update the authenticated user's email and password. |
-| `POST /api/login` | Log in with email and password; returns a one-hour access token and a refresh token (valid for 60 days). |
-| `POST /api/refresh` | Validate a refresh token (Bearer) for a new access token. |
+| `POST /api/users` | Create an account. Body: `{"email", "password"}`; passwords need at least 8 characters. Returns 409 if the email is taken. |
+| `PUT /api/users` | Update your email and password. Requires an access token. |
+| `POST /api/login` | Log in. Returns the user, a one-hour access token, and a 60-day refresh token. Limited to 10 attempts per IP, refilled at one every 6 seconds. |
+| `POST /api/refresh` | Exchange a refresh token (Bearer) for a new access token and a new refresh token. The old refresh token stops working. |
 | `POST /api/revoke` | Revoke a refresh token (Bearer). |
-| `POST /api/chirps` | Create a chirp with `{"body":"..."}`. Requires an access token; text is limited to 140 characters. |
-| `GET /api/chirps` | List chirps. Optional `author_id=<uuid>` filters by author; `sort=desc` sorts newest first (default is oldest first). |
+| `POST /api/chirps` | Post a chirp: `{"body": "..."}`, up to 140 characters. Requires an access token. |
+| `GET /api/chirps` | List chirps, 20 per page. Query: `author_id`, `sort=asc\|desc`, `limit` (max 100), `cursor`. The next page's cursor is in the `X-Next-Cursor` header. |
 | `GET /api/chirps/{chirpID}` | Get one chirp. |
-| `DELETE /api/chirps/{chirpID}` | Delete your own chirp. Requires an access token. |
-| `POST /api/polka/webhooks` | Process the `user.upgraded` event and grant Chirpy Red subscription. Requires the configured API key. |
-| `GET /admin/metrics` | Show the number of requests served from `/app/`. |
-| `POST /admin/reset` | Reset that count and delete all users and related data. Available only when `PLATFORM=dev`. |
-| `GET /app/` | Serve static frontend assets. |
+| `DELETE /api/chirps/{chirpID}` | Delete one of your chirps. Requires an access token. |
+| `POST /api/polka/webhooks` | Handle a payment event; `user.upgraded` grants Chirpy Red. Requires the Polka API key. |
+| `GET /api/healthz` | Readiness check. |
+| `GET /admin/metrics` | Visit count for the `/app/` page. |
+| `POST /admin/reset` | Delete all users and their data. Only when `PLATFORM=dev`. |
+| `GET /docs` | Swagger UI. |
+
+### Examples
+
+These use [jq](https://jqlang.org) to pull values out of responses.
+
+```sh
+API=http://localhost:8080
+
+# Create an account and log in.
+curl -s -X POST $API/api/users -d '{"email":"ada@example.com","password":"correct-horse"}'
+LOGIN=$(curl -s -X POST $API/api/login -d '{"email":"ada@example.com","password":"correct-horse"}')
+TOKEN=$(echo "$LOGIN" | jq -r .token)
+REFRESH=$(echo "$LOGIN" | jq -r .refresh_token)
+
+# Post a chirp.
+curl -s -X POST $API/api/chirps -H "Authorization: Bearer $TOKEN" -d '{"body":"Hello, Chirpy!"}'
+
+# List the newest chirps, two per page, and fetch the next page.
+CURSOR=$(curl -s -D - -o /dev/null "$API/api/chirps?sort=desc&limit=2" | grep -i x-next-cursor | cut -d' ' -f2 | tr -d '\r')
+curl -s "$API/api/chirps?sort=desc&limit=2&cursor=$CURSOR"
+
+# Rotate tokens. The old refresh token is now revoked.
+curl -s -X POST $API/api/refresh -H "Authorization: Bearer $REFRESH"
+```
+
+## Development
+
+Requirements: Go 1.27+, PostgreSQL, and Docker for the integration tests. The [goose](https://github.com/pressly/goose) and [sqlc](https://sqlc.dev) CLIs are only needed for `make migrate-*` and `make sqlc`.
+
+```sh
+cp .env.example .env     # then set DB_URL, SECRET, and POLKA_KEY
+make migrate-up          # or set MIGRATE_ON_START=true in .env
+make run
+```
+
+| Command | What it does |
+| --- | --- |
+| `make test` | Unit and handler tests with the race detector. |
+| `make test-integration` | Also runs the Postgres integration tests (needs Docker). |
+| `make cover` | Coverage across `internal/`, including integration tests. |
+| `make lint` | gofmt check, `go vet`, and golangci-lint. |
+| `make migrate-up` / `migrate-down` / `migrate-status` | Run goose against `DB_URL`. |
+| `make sqlc` | Regenerate `internal/database` from `sql/queries`. |
+| `make docker-up` / `docker-down` | Start or stop the Compose stack. |
+
+CI runs formatting, vet, golangci-lint, the full test suite with the race detector and integration tests, a coverage check (fails below 70%), and `sqlc diff` on every push and pull request.
+
+### Configuration
+
+| Variable | Required | Description |
+| --- | --- | --- |
+| `DB_URL` | Yes | Postgres connection string. |
+| `SECRET` | Yes | JWT signing key. Generate one with `openssl rand -base64 64`. |
+| `POLKA_KEY` | Yes | API key the Polka webhook must send. |
+| `PLATFORM` | No | `dev` enables `POST /admin/reset`. |
+| `PORT` | No | Listen port. Default `8080`. |
+| `MIGRATE_ON_START` | No | `true` applies pending migrations at startup. |
+
+## What I'd do next
+
+- **Refresh-token reuse detection:** if a revoked refresh token is presented, revoke every token descended from the same login, since reuse means a token was stolen.
+- **Idempotent webhooks:** store each event ID and ignore replays.
+- **Proxy-aware, shared rate limiting:** read the client IP from a trusted proxy header, and keep counters in Redis so limits hold across several instances.
+- **Metrics:** a Prometheus `/metrics` endpoint with request counts and latency histograms, replacing the HTML hit counter.
+- **Follows and a feed:** a `follows` table and a `GET /api/feed` timeline, to show join and index design under a heavier read path.
