@@ -1,0 +1,533 @@
+openapi: 3.0.3
+info:
+  title: Chirpy API
+  version: 1.0.0
+  description: |
+    A microblogging REST API: accounts, short posts ("chirps"), JWT access
+    tokens with rotating refresh tokens, and a payment-provider webhook.
+
+    Every response carries an `X-Request-ID` header that matches the server's
+    log lines for that request. Request bodies are limited to 1 MB.
+servers:
+  - url: /
+
+tags:
+  - name: Users
+  - name: Sessions
+  - name: Chirps
+  - name: Webhooks
+  - name: Admin
+
+paths:
+  /api/healthz:
+    get:
+      tags: [Admin]
+      summary: Readiness check
+      operationId: healthz
+      responses:
+        "200":
+          description: The server is up.
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: OK
+
+  /api/users:
+    post:
+      tags: [Users]
+      summary: Create an account
+      operationId: createUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewCredentials"
+      responses:
+        "201":
+          description: The account was created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/EmailTaken"
+        "413":
+          $ref: "#/components/responses/TooLarge"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    put:
+      tags: [Users]
+      summary: Update your email and password
+      operationId: updateUser
+      security:
+        - accessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewCredentials"
+      responses:
+        "200":
+          description: The updated account.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/EmailTaken"
+        "413":
+          $ref: "#/components/responses/TooLarge"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/login:
+    post:
+      tags: [Sessions]
+      summary: Log in
+      description: |
+        Returns a one-hour access token and a 60-day refresh token. Unknown
+        emails and wrong passwords get the same 401. Each client IP gets 10
+        attempts, refilled at one every 6 seconds.
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Credentials"
+      responses:
+        "200":
+          description: Logged in.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "413":
+          $ref: "#/components/responses/TooLarge"
+        "429":
+          description: Too many login attempts from this IP.
+          headers:
+            Retry-After:
+              description: Seconds until another attempt is allowed.
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/refresh:
+    post:
+      tags: [Sessions]
+      summary: Exchange a refresh token for new tokens
+      description: |
+        Revokes the refresh token presented and returns a new access token and
+        a new refresh token. Each refresh token works once; if several
+        requests use the same token at the same time, only one succeeds.
+      operationId: refresh
+      security:
+        - refreshToken: []
+      responses:
+        "200":
+          description: New tokens.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenPair"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/revoke:
+    post:
+      tags: [Sessions]
+      summary: Revoke a refresh token
+      operationId: revoke
+      security:
+        - refreshToken: []
+      responses:
+        "204":
+          description: The token was revoked.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/chirps:
+    get:
+      tags: [Chirps]
+      summary: List chirps
+      description: |
+        Returns one page of chirps ordered by creation time. When more results
+        exist, the `X-Next-Cursor` header holds a cursor for the next page;
+        pass it back as `cursor` with the same filters.
+      operationId: listChirps
+      parameters:
+        - name: author_id
+          in: query
+          description: Only return this user's chirps.
+          schema:
+            type: string
+            format: uuid
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: asc
+        - name: limit
+          in: query
+          description: Page size. Values above 100 are treated as 100.
+          schema:
+            type: integer
+            minimum: 1
+            default: 20
+        - name: cursor
+          in: query
+          description: The `X-Next-Cursor` value from the previous page.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: A page of chirps.
+          headers:
+            X-Next-Cursor:
+              description: Cursor for the next page. Absent on the last page.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Chirp"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    post:
+      tags: [Chirps]
+      summary: Post a chirp
+      description: |
+        Chirps are limited to 140 characters. The words "kerfuffle",
+        "sharbert", and "fornax" are replaced with `****`, ignoring case.
+      operationId: createChirp
+      security:
+        - accessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [body]
+              properties:
+                body:
+                  type: string
+                  maxLength: 140
+                  example: Hello, Chirpy!
+      responses:
+        "201":
+          description: The new chirp.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Chirp"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "413":
+          $ref: "#/components/responses/TooLarge"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/chirps/{chirpID}:
+    parameters:
+      - name: chirpID
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Chirps]
+      summary: Get a chirp
+      operationId: getChirp
+      responses:
+        "200":
+          description: The chirp.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Chirp"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    delete:
+      tags: [Chirps]
+      summary: Delete one of your chirps
+      operationId: deleteChirp
+      security:
+        - accessToken: []
+      responses:
+        "204":
+          description: The chirp was deleted.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: The chirp belongs to another user.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/polka/webhooks:
+    post:
+      tags: [Webhooks]
+      summary: Receive a Polka payment event
+      description: |
+        A `user.upgraded` event grants the user Chirpy Red. Other events are
+        acknowledged and ignored. The API key is checked before the body is
+        read.
+      operationId: polkaWebhook
+      security:
+        - polkaApiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PolkaEvent"
+      responses:
+        "204":
+          description: The event was processed or ignored.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "413":
+          $ref: "#/components/responses/TooLarge"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /admin/metrics:
+    get:
+      tags: [Admin]
+      summary: Count of visits to the /app/ static page
+      operationId: metrics
+      responses:
+        "200":
+          description: An HTML page with the visit count.
+          content:
+            text/html:
+              schema:
+                type: string
+
+  /admin/reset:
+    post:
+      tags: [Admin]
+      summary: Delete all users and their data
+      description: Only works when the server runs with `PLATFORM=dev`.
+      operationId: reset
+      responses:
+        "200":
+          description: Everything was deleted.
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: OK
+        "403":
+          description: The server isn't in dev mode.
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: Forbidden
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+components:
+  securitySchemes:
+    accessToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: The `token` from /api/login or /api/refresh. Valid for one hour.
+    refreshToken:
+      type: http
+      scheme: bearer
+      description: The `refresh_token` from /api/login or /api/refresh.
+    polkaApiKey:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: "Send as `ApiKey <key>`, where `<key>` is the server's POLKA_KEY."
+
+  schemas:
+    Credentials:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          example: user@example.com
+        password:
+          type: string
+          format: password
+          example: correct-horse-battery
+
+    NewCredentials:
+      allOf:
+        - $ref: "#/components/schemas/Credentials"
+        - type: object
+          properties:
+            password:
+              type: string
+              minLength: 8
+
+    User:
+      type: object
+      required: [id, created_at, updated_at, email, is_chirpy_red]
+      properties:
+        id:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        email:
+          type: string
+          format: email
+        is_chirpy_red:
+          type: boolean
+          description: Whether the user has the paid Chirpy Red membership.
+
+    TokenPair:
+      type: object
+      required: [token, refresh_token]
+      properties:
+        token:
+          type: string
+          description: JWT access token, valid for one hour.
+        refresh_token:
+          type: string
+          description: Single-use refresh token, valid for 60 days.
+
+    LoginResponse:
+      allOf:
+        - $ref: "#/components/schemas/User"
+        - $ref: "#/components/schemas/TokenPair"
+
+    Chirp:
+      type: object
+      required: [id, created_at, updated_at, body, user_id]
+      properties:
+        id:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        body:
+          type: string
+        user_id:
+          type: string
+          format: uuid
+
+    PolkaEvent:
+      type: object
+      required: [event, data]
+      properties:
+        event:
+          type: string
+          example: user.upgraded
+        data:
+          type: object
+          required: [user_id]
+          properties:
+            user_id:
+              type: string
+              format: uuid
+
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+
+  responses:
+    BadRequest:
+      description: The request was malformed or failed validation.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Unauthorized:
+      description: Missing or invalid credentials.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: The resource doesn't exist.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    EmailTaken:
+      description: Another account already uses this email.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    TooLarge:
+      description: The request body is over 1 MB.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    InternalError:
+      description: Something went wrong on the server.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"

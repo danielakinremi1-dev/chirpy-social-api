@@ -13,6 +13,9 @@ func (a *API) Routes() http.Handler {
 
 	mux.Handle("/app/", http.StripPrefix("/app", a.metricsInc(http.FileServerFS(web.FS))))
 
+	mux.HandleFunc("GET /docs", handleDocs)
+	mux.HandleFunc("GET /docs/openapi.yaml", handleOpenAPISpec)
+
 	mux.HandleFunc("GET /api/healthz", handleReadiness)
 
 	mux.HandleFunc("POST /api/users", a.handleCreateUser)
