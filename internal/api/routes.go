@@ -6,7 +6,8 @@ import (
 	"github.com/danielakinremi1-dev/chirpy-social-api/web"
 )
 
-// Routes returns the handler for every Chirpy endpoint.
+// Routes returns the handler for every Chirpy endpoint, wrapped in request
+// ID, logging, panic recovery, and body size middleware.
 func (a *API) Routes() http.Handler {
 	mux := http.NewServeMux()
 
@@ -17,7 +18,7 @@ func (a *API) Routes() http.Handler {
 	mux.HandleFunc("POST /api/users", a.handleCreateUser)
 	mux.HandleFunc("PUT /api/users", a.requireAuth(a.handleUpdateUser))
 
-	mux.HandleFunc("POST /api/login", a.handleLogin)
+	mux.HandleFunc("POST /api/login", a.loginLimiter.limit(a.handleLogin))
 	mux.HandleFunc("POST /api/refresh", a.handleRefresh)
 	mux.HandleFunc("POST /api/revoke", a.handleRevoke)
 
@@ -31,5 +32,5 @@ func (a *API) Routes() http.Handler {
 	mux.HandleFunc("GET /admin/metrics", a.handleMetrics)
 	mux.HandleFunc("POST /admin/reset", a.handleReset)
 
-	return mux
+	return withRequestID(logRequests(recoverPanics(limitBodySize(mux))))
 }

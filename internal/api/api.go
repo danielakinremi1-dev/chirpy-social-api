@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"sync/atomic"
+	"time"
 
 	"github.com/danielakinremi1-dev/chirpy-social-api/internal/config"
 	"github.com/danielakinremi1-dev/chirpy-social-api/internal/database"
@@ -46,6 +47,7 @@ type API struct {
 	polkaKey       string
 	platform       string
 	fileserverHits atomic.Int32
+	loginLimiter   *ipRateLimiter
 }
 
 func New(store Store, cfg config.Config) *API {
@@ -54,5 +56,7 @@ func New(store Store, cfg config.Config) *API {
 		jwtSecret: cfg.JWTSecret,
 		polkaKey:  cfg.PolkaKey,
 		platform:  cfg.Platform,
+		// 10 attempts per IP, refilled at one every 6 seconds.
+		loginLimiter: newIPRateLimiter(6*time.Second, 10),
 	}
 }

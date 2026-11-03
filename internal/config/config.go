@@ -11,6 +11,7 @@ type Config struct {
 	JWTSecret string
 	PolkaKey  string
 	Platform  string
+	Port      string
 }
 
 // Load reads the configuration using getenv, which is normally os.Getenv.
@@ -20,6 +21,10 @@ func Load(getenv func(string) string) (Config, error) {
 		JWTSecret: getenv("SECRET"),
 		PolkaKey:  getenv("POLKA_KEY"),
 		Platform:  getenv("PLATFORM"),
+		Port:      getenv("PORT"),
+	}
+	if cfg.Port == "" {
+		cfg.Port = "8080"
 	}
 
 	required := []struct{ key, value string }{

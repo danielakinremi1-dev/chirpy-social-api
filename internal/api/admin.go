@@ -30,7 +30,7 @@ func (a *API) handleReset(w http.ResponseWriter, r *http.Request) {
 
 	a.fileserverHits.Store(0)
 	if err := a.store.DeleteAllUsers(r.Context()); err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Error deleting users", err)
+		respondWithError(w, r, http.StatusInternalServerError, "Error deleting users", err)
 		return
 	}
 

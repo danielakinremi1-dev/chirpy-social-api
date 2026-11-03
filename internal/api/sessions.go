@@ -37,28 +37,28 @@ func (a *API) handleLogin(w http.ResponseWriter, r *http.Request) {
 	if errors.Is(err, sql.ErrNoRows) {
 		// Hash anyway so unknown emails take as long as wrong passwords.
 		auth.CheckPasswordHash(params.Password, dummyPasswordHash)
-		respondWithError(w, http.StatusUnauthorized, "Incorrect email or password", err)
+		respondWithError(w, r, http.StatusUnauthorized, "Incorrect email or password", err)
 		return
 	} else if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Error retrieving user", err)
+		respondWithError(w, r, http.StatusInternalServerError, "Error retrieving user", err)
 		return
 	}
 
 	match, err := auth.CheckPasswordHash(params.Password, user.HashedPassword)
 	if err != nil || !match {
-		respondWithError(w, http.StatusUnauthorized, "Incorrect email or password", err)
+		respondWithError(w, r, http.StatusUnauthorized, "Incorrect email or password", err)
 		return
 	}
 
 	accessToken, err := auth.MakeJWT(user.ID, a.jwtSecret, accessTokenTTL)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Error creating access token", err)
+		respondWithError(w, r, http.StatusInternalServerError, "Error creating access token", err)
 		return
 	}
 
 	refreshToken, err := createRefreshToken(r.Context(), a.store, user.ID)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Error creating refresh token", err)
+		respondWithError(w, r, http.StatusInternalServerError, "Error creating refresh token", err)
 		return
 	}
 
@@ -79,7 +79,7 @@ func (a *API) handleRefresh(w http.ResponseWriter, r *http.Request) {
 
 	refreshToken, err := auth.GetBearerToken(r.Header)
 	if err != nil {
-		respondWithError(w, http.StatusUnauthorized, "Missing refresh token", err)
+		respondWithError(w, r, http.StatusUnauthorized, "Missing refresh token", err)
 		return
 	}
 
@@ -112,10 +112,10 @@ func (a *API) handleRefresh(w http.ResponseWriter, r *http.Request) {
 		return err
 	})
 	if errors.Is(err, errInvalidRefreshToken) {
-		respondWithError(w, http.StatusUnauthorized, "Invalid refresh token", err)
+		respondWithError(w, r, http.StatusUnauthorized, "Invalid refresh token", err)
 		return
 	} else if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Error refreshing tokens", err)
+		respondWithError(w, r, http.StatusInternalServerError, "Error refreshing tokens", err)
 		return
 	}
 
@@ -125,16 +125,16 @@ func (a *API) handleRefresh(w http.ResponseWriter, r *http.Request) {
 func (a *API) handleRevoke(w http.ResponseWriter, r *http.Request) {
 	refreshToken, err := auth.GetBearerToken(r.Header)
 	if err != nil {
-		respondWithError(w, http.StatusUnauthorized, "Missing refresh token", err)
+		respondWithError(w, r, http.StatusUnauthorized, "Missing refresh token", err)
 		return
 	}
 
 	revoked, err := a.store.RevokeRefreshToken(r.Context(), refreshToken)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Error revoking refresh token", err)
+		respondWithError(w, r, http.StatusInternalServerError, "Error revoking refresh token", err)
 		return
 	} else if revoked == 0 {
-		respondWithError(w, http.StatusUnauthorized, "Invalid refresh token", nil)
+		respondWithError(w, r, http.StatusUnauthorized, "Invalid refresh token", nil)
 		return
 	}
 

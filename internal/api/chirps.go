@@ -34,7 +34,7 @@ func (a *API) handleCreateChirp(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if utf8.RuneCountInString(params.Body) > maxChirpLength {
-		respondWithError(w, http.StatusBadRequest, "Chirp is too long", nil)
+		respondWithError(w, r, http.StatusBadRequest, "Chirp is too long", nil)
 		return
 	}
 
@@ -43,7 +43,7 @@ func (a *API) handleCreateChirp(w http.ResponseWriter, r *http.Request) {
 		UserID: userIDFromContext(r.Context()),
 	})
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Error creating chirp", err)
+		respondWithError(w, r, http.StatusInternalServerError, "Error creating chirp", err)
 		return
 	}
 
@@ -53,16 +53,16 @@ func (a *API) handleCreateChirp(w http.ResponseWriter, r *http.Request) {
 func (a *API) handleGetChirp(w http.ResponseWriter, r *http.Request) {
 	chirpID, err := uuid.Parse(r.PathValue("chirpID"))
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid chirp ID", err)
+		respondWithError(w, r, http.StatusBadRequest, "Invalid chirp ID", err)
 		return
 	}
 
 	chirp, err := a.store.GetChirp(r.Context(), chirpID)
 	if errors.Is(err, sql.ErrNoRows) {
-		respondWithError(w, http.StatusNotFound, "Chirp not found", err)
+		respondWithError(w, r, http.StatusNotFound, "Chirp not found", err)
 		return
 	} else if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Error retrieving chirp", err)
+		respondWithError(w, r, http.StatusInternalServerError, "Error retrieving chirp", err)
 		return
 	}
 
@@ -72,26 +72,26 @@ func (a *API) handleGetChirp(w http.ResponseWriter, r *http.Request) {
 func (a *API) handleDeleteChirp(w http.ResponseWriter, r *http.Request) {
 	chirpID, err := uuid.Parse(r.PathValue("chirpID"))
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid chirp ID", err)
+		respondWithError(w, r, http.StatusBadRequest, "Invalid chirp ID", err)
 		return
 	}
 
 	chirp, err := a.store.GetChirp(r.Context(), chirpID)
 	if errors.Is(err, sql.ErrNoRows) {
-		respondWithError(w, http.StatusNotFound, "Chirp not found", err)
+		respondWithError(w, r, http.StatusNotFound, "Chirp not found", err)
 		return
 	} else if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Error retrieving chirp", err)
+		respondWithError(w, r, http.StatusInternalServerError, "Error retrieving chirp", err)
 		return
 	}
 
 	if chirp.UserID != userIDFromContext(r.Context()) {
-		respondWithError(w, http.StatusForbidden, "You can only delete your own chirps", nil)
+		respondWithError(w, r, http.StatusForbidden, "You can only delete your own chirps", nil)
 		return
 	}
 
 	if err := a.store.DeleteChirp(r.Context(), chirpID); err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Error deleting chirp", err)
+		respondWithError(w, r, http.StatusInternalServerError, "Error deleting chirp", err)
 		return
 	}
 
@@ -108,7 +108,7 @@ func (a *API) handleListChirps(w http.ResponseWriter, r *http.Request) {
 	if authorIDString := query.Get("author_id"); authorIDString != "" {
 		parsedID, err := uuid.Parse(authorIDString)
 		if err != nil {
-			respondWithError(w, http.StatusBadRequest, "Invalid author ID", err)
+			respondWithError(w, r, http.StatusBadRequest, "Invalid author ID", err)
 			return
 		}
 		authorID = uuid.NullUUID{UUID: parsedID, Valid: true}
@@ -118,7 +118,7 @@ func (a *API) handleListChirps(w http.ResponseWriter, r *http.Request) {
 	if limitString := query.Get("limit"); limitString != "" {
 		parsedLimit, err := strconv.Atoi(limitString)
 		if err != nil || parsedLimit < 1 {
-			respondWithError(w, http.StatusBadRequest, "Invalid limit", err)
+			respondWithError(w, r, http.StatusBadRequest, "Invalid limit", err)
 			return
 		}
 		limit = min(parsedLimit, maxChirpsLimit)
@@ -129,7 +129,7 @@ func (a *API) handleListChirps(w http.ResponseWriter, r *http.Request) {
 	if cursor := query.Get("cursor"); cursor != "" {
 		createdAt, id, err := decodeChirpCursor(cursor)
 		if err != nil {
-			respondWithError(w, http.StatusBadRequest, "Invalid cursor", err)
+			respondWithError(w, r, http.StatusBadRequest, "Invalid cursor", err)
 			return
 		}
 		cursorCreatedAt = sql.NullTime{Time: createdAt, Valid: true}
@@ -157,7 +157,7 @@ func (a *API) handleListChirps(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Error retrieving chirps", err)
+		respondWithError(w, r, http.StatusInternalServerError, "Error retrieving chirps", err)
 		return
 	}
 

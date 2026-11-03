@@ -15,13 +15,13 @@ func (a *API) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := params.validate(); err != nil {
-		respondWithError(w, http.StatusBadRequest, err.Error(), err)
+		respondWithError(w, r, http.StatusBadRequest, err.Error(), err)
 		return
 	}
 
 	hashedPassword, err := auth.HashPassword(params.Password)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Error hashing password", err)
+		respondWithError(w, r, http.StatusInternalServerError, "Error hashing password", err)
 		return
 	}
 
@@ -30,10 +30,10 @@ func (a *API) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 		HashedPassword: hashedPassword,
 	})
 	if isUniqueViolation(err) {
-		respondWithError(w, http.StatusConflict, "Email is already registered", err)
+		respondWithError(w, r, http.StatusConflict, "Email is already registered", err)
 		return
 	} else if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Error creating user", err)
+		respondWithError(w, r, http.StatusInternalServerError, "Error creating user", err)
 		return
 	}
 
@@ -46,13 +46,13 @@ func (a *API) handleUpdateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := params.validate(); err != nil {
-		respondWithError(w, http.StatusBadRequest, err.Error(), err)
+		respondWithError(w, r, http.StatusBadRequest, err.Error(), err)
 		return
 	}
 
 	hashedPassword, err := auth.HashPassword(params.Password)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Error hashing password", err)
+		respondWithError(w, r, http.StatusInternalServerError, "Error hashing password", err)
 		return
 	}
 
@@ -62,13 +62,13 @@ func (a *API) handleUpdateUser(w http.ResponseWriter, r *http.Request) {
 		ID:             userIDFromContext(r.Context()),
 	})
 	if errors.Is(err, sql.ErrNoRows) {
-		respondWithError(w, http.StatusNotFound, "User not found", err)
+		respondWithError(w, r, http.StatusNotFound, "User not found", err)
 		return
 	} else if isUniqueViolation(err) {
-		respondWithError(w, http.StatusConflict, "Email is already registered", err)
+		respondWithError(w, r, http.StatusConflict, "Email is already registered", err)
 		return
 	} else if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Error updating user", err)
+		respondWithError(w, r, http.StatusInternalServerError, "Error updating user", err)
 		return
 	}
 
