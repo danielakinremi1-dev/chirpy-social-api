@@ -12,6 +12,8 @@ type Config struct {
 	PolkaKey  string
 	Platform  string
 	Port      string
+	// MigrateOnStart applies pending database migrations before serving.
+	MigrateOnStart bool
 }
 
 // Load reads the configuration using getenv, which is normally os.Getenv.
@@ -22,6 +24,8 @@ func Load(getenv func(string) string) (Config, error) {
 		PolkaKey:  getenv("POLKA_KEY"),
 		Platform:  getenv("PLATFORM"),
 		Port:      getenv("PORT"),
+
+		MigrateOnStart: getenv("MIGRATE_ON_START") == "true",
 	}
 	if cfg.Port == "" {
 		cfg.Port = "8080"

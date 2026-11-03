@@ -33,9 +33,10 @@ func (s *SQLStore) InTx(ctx context.Context, fn func(q database.Querier) error) 
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	// Rollback is a no-op once Commit has succeeded.
+	defer func() { _ = tx.Rollback() }()
 
-	if err := fn(s.Queries.WithTx(tx)); err != nil {
+	if err := fn(s.WithTx(tx)); err != nil {
 		return err
 	}
 	return tx.Commit()

@@ -1,0 +1,10 @@
+.git
+.github
+.env
+*.md
+test.http
+out
+projects
+/chirpy
+*.exe
+coverage.out

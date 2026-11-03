@@ -1,0 +1,33 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: chirpy
+      POSTGRES_PASSWORD: chirpy
+      POSTGRES_DB: chirpy
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chirpy -d chirpy"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
+
+  app:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_URL: postgres://chirpy:chirpy@db:5432/chirpy?sslmode=disable
+      PLATFORM: dev
+      MIGRATE_ON_START: "true"
+      # Development-only defaults. Set SECRET and POLKA_KEY in your shell or
+      # .env to override them.
+      SECRET: ${SECRET:-dev-only-jwt-secret-do-not-use-in-production}
+      POLKA_KEY: ${POLKA_KEY:-dev-only-polka-key}
+    ports:
+      - "${PORT:-8080}:8080"
+
+volumes:
+  db-data:

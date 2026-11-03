@@ -14,6 +14,7 @@ import (
 
 	"github.com/danielakinremi1-dev/chirpy-social-api/internal/api"
 	"github.com/danielakinremi1-dev/chirpy-social-api/internal/config"
+	"github.com/danielakinremi1-dev/chirpy-social-api/sql/schema"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
@@ -28,7 +29,8 @@ func main() {
 }
 
 func run() error {
-	godotenv.Load()
+	// .env is optional; the environment can supply everything.
+	_ = godotenv.Load()
 
 	cfg, err := config.Load(os.Getenv)
 	if err != nil {
@@ -46,6 +48,13 @@ func run() error {
 	cancel()
 	if err != nil {
 		return fmt.Errorf("connecting to database: %w", err)
+	}
+
+	if cfg.MigrateOnStart {
+		if err := schema.Up(context.Background(), db); err != nil {
+			return fmt.Errorf("applying migrations: %w", err)
+		}
+		slog.Info("migrations applied")
 	}
 
 	srv := &http.Server{

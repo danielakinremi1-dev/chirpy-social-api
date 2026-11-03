@@ -12,6 +12,8 @@ func TestLoad(t *testing.T) {
 		"POLKA_KEY": "polka",
 		"PLATFORM":  "dev",
 		"PORT":      "9000",
+
+		"MIGRATE_ON_START": "true",
 	}
 
 	tests := []struct {
@@ -22,11 +24,11 @@ func TestLoad(t *testing.T) {
 	}{
 		{
 			name: "All set",
-			want: Config{DBURL: "postgres://localhost/chirpy", JWTSecret: "secret", PolkaKey: "polka", Platform: "dev", Port: "9000"},
+			want: Config{DBURL: "postgres://localhost/chirpy", JWTSecret: "secret", PolkaKey: "polka", Platform: "dev", Port: "9000", MigrateOnStart: true},
 		},
 		{
 			name:  "Default port",
-			unset: []string{"PORT", "PLATFORM"},
+			unset: []string{"PORT", "PLATFORM", "MIGRATE_ON_START"},
 			want:  Config{DBURL: "postgres://localhost/chirpy", JWTSecret: "secret", PolkaKey: "polka", Port: "8080"},
 		},
 		{

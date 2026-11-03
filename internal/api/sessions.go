@@ -36,7 +36,7 @@ func (a *API) handleLogin(w http.ResponseWriter, r *http.Request) {
 	user, err := a.store.GetUser(r.Context(), params.Email)
 	if errors.Is(err, sql.ErrNoRows) {
 		// Hash anyway so unknown emails take as long as wrong passwords.
-		auth.CheckPasswordHash(params.Password, dummyPasswordHash)
+		_, _ = auth.CheckPasswordHash(params.Password, dummyPasswordHash)
 		respondWithError(w, r, http.StatusUnauthorized, "Incorrect email or password", err)
 		return
 	} else if err != nil {
