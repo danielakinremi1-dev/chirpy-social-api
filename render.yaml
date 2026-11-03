@@ -1,0 +1,27 @@
+# Render Blueprint: https://render.com/docs/blueprint-spec
+# The database is hosted on Neon; see the README's Deployment section.
+services:
+  - type: web
+    name: chirpy
+    runtime: docker
+    plan: free
+    region: virginia
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/healthz
+    # Deploy only after the GitHub Actions checks pass on the commit.
+    autoDeployTrigger: checksPass
+    envVars:
+      # Neon connection string; entered in the dashboard on first deploy.
+      - key: DB_URL
+        sync: false
+      - key: POLKA_KEY
+        sync: false
+      # Random 256-bit JWT signing key, generated once by Render.
+      - key: SECRET
+        generateValue: true
+      # Anything but "dev"; the server also refuses "dev" on Render.
+      - key: PLATFORM
+        value: production
+      # Render's proxy appends the client IP to X-Forwarded-For.
+      - key: TRUST_PROXY
+        value: "true"

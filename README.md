@@ -152,6 +152,19 @@ CI runs formatting, vet, golangci-lint, the full test suite with the race detect
 | `MIGRATE_ON_START` | No | `true` applies pending migrations at startup. |
 | `TRUST_PROXY` | No | `true` takes the client IP (for rate limiting and logs) from the last `X-Forwarded-For` entry, which the reverse proxy appends. Only enable it behind such a proxy. |
 
+## Deployment
+
+The live API runs on Render's free tier, defined in [render.yaml](render.yaml), with the database on Neon's free Postgres.
+
+- Render builds the Dockerfile and redeploys after CI passes on `main`.
+- Render generates `SECRET`; `DB_URL` and `POLKA_KEY` are set in its dashboard. `PLATFORM=production` and `TRUST_PROXY=true` come from `render.yaml`, and the server refuses to start with `PLATFORM=dev` on Render.
+- Migrations are applied by hand with Neon's direct (non-pooled) connection string:
+
+  ```sh
+  goose -dir sql/schema postgres "$NEON_DB_URL" up
+  ```
+- The app's Postgres driver (lib/pq) doesn't support the `channel_binding` parameter in Neon's default connection string, so the app's `DB_URL` drops it and uses `sslmode=verify-full`, which checks Neon's certificate against the system CA store.
+
 ## What I'd do next
 
 - **Refresh-token reuse detection:** if a revoked refresh token is presented, revoke every token descended from the same login, since reuse means a token was stolen.
