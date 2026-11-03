@@ -1,20 +1,28 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"sync/atomic"
+	"time"
 
 	"github.com/danielakinremi1-dev/chirpy-social-api/internal/database"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
 
+const (
+	accessTokenTTL  = time.Hour
+	refreshTokenTTL = 60 * 24 * time.Hour
+)
+
 type apiConfig struct {
 	fileserverHits atomic.Int32
+	sqlDB          *sql.DB
 	db             *database.Queries
 	authLevel      string
 	secret         string
@@ -25,14 +33,21 @@ func main() {
 
 	godotenv.Load()
 
-	dbURL := os.Getenv("DB_URL")
+	dbURL := requireEnv("DB_URL")
 	platform := os.Getenv("PLATFORM")
-	secret := os.Getenv("SECRET")
-	polka_key := os.Getenv("POLKA_KEY")
+	secret := requireEnv("SECRET")
+	polka_key := requireEnv("POLKA_KEY")
 
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
 		log.Fatalln(err)
+	}
+
+	pingCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	err = db.PingContext(pingCtx)
+	cancel()
+	if err != nil {
+		log.Fatalf("Error connecting to database: %v", err)
 	}
 
 	dbQueries := database.New(db)
@@ -40,7 +55,7 @@ func main() {
 	const filepathRoot = "."
 	const port = "8080"
 
-	apiCfg := &apiConfig{db: dbQueries, authLevel: platform, secret: secret, polka_key: polka_key}
+	apiCfg := &apiConfig{sqlDB: db, db: dbQueries, authLevel: platform, secret: secret, polka_key: polka_key}
 
 	mux := http.NewServeMux()
 	fileHandler := http.FileServer(http.Dir(filepathRoot))
@@ -67,6 +82,14 @@ func main() {
 
 	log.Printf("Serving on port: %s\n", port)
 	log.Fatal(srv.ListenAndServe())
+}
+
+func requireEnv(key string) string {
+	value := os.Getenv(key)
+	if value == "" {
+		log.Fatalf("%s must be set", key)
+	}
+	return value
 }
 
 func (cfg *apiConfig) handlerMetrics(w http.ResponseWriter, req *http.Request) {

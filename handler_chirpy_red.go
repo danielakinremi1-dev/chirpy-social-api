@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/subtle"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -19,20 +20,20 @@ func (cfg *apiConfig) handlerChirpyRed(w http.ResponseWriter, req *http.Request)
 		} `json:"data"`
 	}
 
-	decoder := json.NewDecoder(req.Body)
-	params := parameter{}
-	err := decoder.Decode(&params)
-	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid request body", err)
-		return
-	}
-
 	authorization, err := auth.GetAPIKey(req.Header)
 	if err != nil {
 		respondWithError(w, http.StatusUnauthorized, "Error decoding authorization data", err)
 		return
-	} else if authorization != cfg.polka_key {
-		respondWithError(w, http.StatusUnauthorized, "Invalid authorization key", err)
+	} else if subtle.ConstantTimeCompare([]byte(authorization), []byte(cfg.polka_key)) != 1 {
+		respondWithError(w, http.StatusUnauthorized, "Invalid authorization key", nil)
+		return
+	}
+
+	decoder := json.NewDecoder(req.Body)
+	params := parameter{}
+	err = decoder.Decode(&params)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request body", err)
 		return
 	}
 

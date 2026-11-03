@@ -32,6 +32,7 @@ func ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, error) {
 		tokenString,
 		&claimsStruct,
 		func(token *jwt.Token) (interface{}, error) { return []byte(tokenSecret), nil },
+		jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}),
 	)
 	if err != nil {
 		return uuid.Nil, err

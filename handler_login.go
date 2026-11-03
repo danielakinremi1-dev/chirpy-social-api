@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/danielakinremi1-dev/chirpy-social-api/internal/auth"
-	"github.com/danielakinremi1-dev/chirpy-social-api/internal/database"
 	"github.com/google/uuid"
 )
 
@@ -56,19 +55,13 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	accessTokenString, err := auth.MakeJWT(userData.ID, cfg.secret, time.Hour)
+	accessTokenString, err := auth.MakeJWT(userData.ID, cfg.secret, accessTokenTTL)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Error creating access token", err)
 		return
 	}
 
-	queryArgs := database.CreateRefreshParams{
-		Token:     auth.MakeRefreshToken(),
-		UserID:    userData.ID,
-		ExpiresAt: time.Now().UTC().Add(time.Hour * 1440),
-	}
-
-	refreshTokenData, err := cfg.db.CreateRefresh(req.Context(), queryArgs)
+	refreshToken, err := createRefreshToken(req.Context(), cfg.db, userData.ID)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Error creating refresh token", err)
 		return
@@ -81,7 +74,7 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, req *http.Request) {
 		Email:        userData.Email,
 		IsChirpyRed:  userData.IsChirpyRed,
 		AccessToken:  accessTokenString,
-		RefreshToken: refreshTokenData.Token,
+		RefreshToken: refreshToken,
 	}
 
 	respondWithJSON(w, http.StatusOK, payload)

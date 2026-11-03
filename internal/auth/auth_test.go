@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
 
@@ -75,6 +76,11 @@ func TestCheckPasswordHash(t *testing.T) {
 func TestValidateJWT(t *testing.T) {
 	userID := uuid.New()
 	validToken, _ := MakeJWT(userID, "secret", time.Hour)
+	hs384Token, _ := jwt.NewWithClaims(jwt.SigningMethodHS384, jwt.RegisteredClaims{
+		Issuer:    string(TokenTypeAccess),
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
+		Subject:   userID.String(),
+	}).SignedString([]byte("secret"))
 
 	tests := []struct {
 		name        string
@@ -101,6 +107,13 @@ func TestValidateJWT(t *testing.T) {
 			name:        "Wrong secret",
 			tokenString: validToken,
 			tokenSecret: "wrong_secret",
+			wantUserID:  uuid.Nil,
+			wantErr:     true,
+		},
+		{
+			name:        "Wrong signing method",
+			tokenString: hs384Token,
+			tokenSecret: "secret",
 			wantUserID:  uuid.Nil,
 			wantErr:     true,
 		},
@@ -215,5 +228,22 @@ func TestGetAPIKey(t *testing.T) {
 				t.Errorf("GetAPIKey() gotKey = %v, want %v", gotKey, tt.wantKey)
 			}
 		})
+	}
+}
+
+func TestMakeRefreshToken(t *testing.T) {
+	token1, err := MakeRefreshToken()
+	if err != nil {
+		t.Fatalf("MakeRefreshToken() error = %v", err)
+	}
+	token2, err := MakeRefreshToken()
+	if err != nil {
+		t.Fatalf("MakeRefreshToken() error = %v", err)
+	}
+	if len(token1) != 64 {
+		t.Errorf("MakeRefreshToken() length = %d, want 64", len(token1))
+	}
+	if token1 == token2 {
+		t.Errorf("MakeRefreshToken() returned the same token twice")
 	}
 }
