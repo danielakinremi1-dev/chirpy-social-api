@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -34,8 +33,12 @@ func (cfg *apiConfig) handlerUsers(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if len(params.Password) < 1 {
-		respondWithError(w, http.StatusBadRequest, "No password provided for user setup", fmt.Errorf("Missing password"))
+	if err := validateEmail(params.Email); err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid email address", err)
+		return
+	}
+	if err := validatePassword(params.Password); err != nil {
+		respondWithError(w, http.StatusBadRequest, err.Error(), err)
 		return
 	}
 
@@ -51,7 +54,10 @@ func (cfg *apiConfig) handlerUsers(w http.ResponseWriter, req *http.Request) {
 	}
 
 	userData, err := cfg.db.CreateUser(req.Context(), queryArgs)
-	if err != nil {
+	if isUniqueViolation(err) {
+		respondWithError(w, http.StatusConflict, "Email is already registered", err)
+		return
+	} else if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Error creating user", err)
 		return
 	}

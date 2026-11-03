@@ -4,13 +4,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
+	"regexp"
 	"time"
+	"unicode/utf8"
 
 	"github.com/danielakinremi1-dev/chirpy-social-api/internal/auth"
 	"github.com/danielakinremi1-dev/chirpy-social-api/internal/database"
 	"github.com/google/uuid"
 )
+
+const maxChirpLength = 140
 
 func (cfg *apiConfig) handlerPostChirps(w http.ResponseWriter, req *http.Request) {
 
@@ -45,7 +48,7 @@ func (cfg *apiConfig) handlerPostChirps(w http.ResponseWriter, req *http.Request
 		return
 	}
 
-	if len(params.Body) > 140 {
+	if utf8.RuneCountInString(params.Body) > maxChirpLength {
 		respondWithError(w, http.StatusBadRequest, "Chirp is too long", fmt.Errorf("Max chirp length exceeded"))
 		return
 	}
@@ -71,12 +74,8 @@ func (cfg *apiConfig) handlerPostChirps(w http.ResponseWriter, req *http.Request
 	respondWithJSON(w, http.StatusCreated, payload)
 }
 
+var badWordsPattern = regexp.MustCompile(`(?i)\b(kerfuffle|sharbert|fornax)\b`)
+
 func filterBadWords(text string) string {
-	badWords := []string{"kerfuffle", "sharbert", "fornax",
-		"Kerfuffle", "Sharbert", "Fornax"}
-	cleanText := text
-	for _, word := range badWords {
-		cleanText = strings.ReplaceAll(cleanText, word, "****")
-	}
-	return cleanText
+	return badWordsPattern.ReplaceAllString(text, "****")
 }

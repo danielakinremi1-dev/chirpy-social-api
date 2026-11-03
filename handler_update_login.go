@@ -46,6 +46,15 @@ func (cfg *apiConfig) handlerUpdateLogin(w http.ResponseWriter, req *http.Reques
 		return
 	}
 
+	if err := validateEmail(params.Email); err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid email address", err)
+		return
+	}
+	if err := validatePassword(params.Password); err != nil {
+		respondWithError(w, http.StatusBadRequest, err.Error(), err)
+		return
+	}
+
 	params.Password, err = auth.HashPassword(params.Password)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Error storing hashed user password", err)
@@ -61,6 +70,9 @@ func (cfg *apiConfig) handlerUpdateLogin(w http.ResponseWriter, req *http.Reques
 	newUserData, err := cfg.db.UpdateUser(req.Context(), queryArgs)
 	if errors.Is(err, sql.ErrNoRows) {
 		respondWithError(w, http.StatusNotFound, "User data not found", err)
+		return
+	} else if isUniqueViolation(err) {
+		respondWithError(w, http.StatusConflict, "Email is already registered", err)
 		return
 	} else if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Error updating user records", err)
