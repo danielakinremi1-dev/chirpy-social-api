@@ -1,3 +1,10 @@
 out
 .env
 Makefile
+
+# Build outputs
+projects
+*.exe
+
+# Local planning notes
+chirpy-upgrade-plan.md
