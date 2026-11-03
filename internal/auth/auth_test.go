@@ -76,6 +76,17 @@ func TestCheckPasswordHash(t *testing.T) {
 func TestValidateJWT(t *testing.T) {
 	userID := uuid.New()
 	validToken, _ := MakeJWT(userID, "secret", time.Hour)
+	expiredToken, _ := MakeJWT(userID, "secret", -time.Minute)
+	wrongIssuerToken, _ := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.RegisteredClaims{
+		Issuer:    "someone-else",
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
+		Subject:   userID.String(),
+	}).SignedString([]byte("secret"))
+	badSubjectToken, _ := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.RegisteredClaims{
+		Issuer:    string(TokenTypeAccess),
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
+		Subject:   "not-a-uuid",
+	}).SignedString([]byte("secret"))
 	hs384Token, _ := jwt.NewWithClaims(jwt.SigningMethodHS384, jwt.RegisteredClaims{
 		Issuer:    string(TokenTypeAccess),
 		ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
@@ -107,6 +118,27 @@ func TestValidateJWT(t *testing.T) {
 			name:        "Wrong secret",
 			tokenString: validToken,
 			tokenSecret: "wrong_secret",
+			wantUserID:  uuid.Nil,
+			wantErr:     true,
+		},
+		{
+			name:        "Expired token",
+			tokenString: expiredToken,
+			tokenSecret: "secret",
+			wantUserID:  uuid.Nil,
+			wantErr:     true,
+		},
+		{
+			name:        "Wrong issuer",
+			tokenString: wrongIssuerToken,
+			tokenSecret: "secret",
+			wantUserID:  uuid.Nil,
+			wantErr:     true,
+		},
+		{
+			name:        "Subject is not a UUID",
+			tokenString: badSubjectToken,
+			tokenSecret: "secret",
 			wantUserID:  uuid.Nil,
 			wantErr:     true,
 		},
@@ -161,6 +193,38 @@ func TestGetBearerToken(t *testing.T) {
 			},
 			wantToken: "",
 			wantErr:   true,
+		},
+		{
+			name: "Scheme without token",
+			headers: http.Header{
+				"Authorization": []string{"Bearer"},
+			},
+			wantToken: "",
+			wantErr:   true,
+		},
+		{
+			name: "Extra fields",
+			headers: http.Header{
+				"Authorization": []string{"Bearer token extra"},
+			},
+			wantToken: "",
+			wantErr:   true,
+		},
+		{
+			name: "Lowercase scheme",
+			headers: http.Header{
+				"Authorization": []string{"bearer token"},
+			},
+			wantToken: "",
+			wantErr:   true,
+		},
+		{
+			name: "Extra whitespace",
+			headers: http.Header{
+				"Authorization": []string{"  Bearer   token  "},
+			},
+			wantToken: "token",
+			wantErr:   false,
 		},
 	}
 
@@ -245,5 +309,19 @@ func TestMakeRefreshToken(t *testing.T) {
 	}
 	if token1 == token2 {
 		t.Errorf("MakeRefreshToken() returned the same token twice")
+	}
+}
+
+func TestHashPasswordUsesSalt(t *testing.T) {
+	hash1, err := HashPassword("samePassword123")
+	if err != nil {
+		t.Fatalf("HashPassword() error = %v", err)
+	}
+	hash2, err := HashPassword("samePassword123")
+	if err != nil {
+		t.Fatalf("HashPassword() error = %v", err)
+	}
+	if hash1 == hash2 {
+		t.Error("HashPassword() returned the same hash twice for one password")
 	}
 }
