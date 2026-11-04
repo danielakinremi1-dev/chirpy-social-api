@@ -20,7 +20,7 @@ Content-Type: application/json
     "password": "{{password}}"
 }
 
-### Login
+### Login 
 # @name login
 POST {{baseUrl}}/api/login
 Content-Type: application/json
