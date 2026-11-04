@@ -22,6 +22,7 @@ services:
       # Anything but "dev"; the server also refuses "dev" on Render.
       - key: PLATFORM
         value: production
-      # Render's proxy appends the client IP to X-Forwarded-For.
+      # Cloudflare, Render's load balancer, and a proxy in the container each
+      # append to X-Forwarded-For, so the client IP is the third entry from the end.
       - key: TRUST_PROXY
-        value: "true"
+        value: "3"

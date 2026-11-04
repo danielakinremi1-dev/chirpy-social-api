@@ -14,7 +14,7 @@ func TestLoad(t *testing.T) {
 		"PORT":      "9000",
 
 		"MIGRATE_ON_START": "true",
-		"TRUST_PROXY":      "true",
+		"TRUST_PROXY":      "3",
 	}
 
 	tests := []struct {
@@ -26,7 +26,7 @@ func TestLoad(t *testing.T) {
 	}{
 		{
 			name: "All set",
-			want: Config{DBURL: "postgres://localhost/chirpy", JWTSecret: "secret", PolkaKey: "polka", Platform: "dev", Port: "9000", MigrateOnStart: true, TrustProxy: true},
+			want: Config{DBURL: "postgres://localhost/chirpy", JWTSecret: "secret", PolkaKey: "polka", Platform: "dev", Port: "9000", MigrateOnStart: true, TrustedProxies: 3},
 		},
 		{
 			name:  "Default port",
@@ -39,6 +39,21 @@ func TestLoad(t *testing.T) {
 			wantErr: "DB_URL, POLKA_KEY",
 		},
 		{
+			name:  "Proxies disabled",
+			extra: map[string]string{"TRUST_PROXY": "false"},
+			want:  Config{DBURL: "postgres://localhost/chirpy", JWTSecret: "secret", PolkaKey: "polka", Platform: "dev", Port: "9000", MigrateOnStart: true},
+		},
+		{
+			name:    "Proxy count not a number",
+			extra:   map[string]string{"TRUST_PROXY": "true"},
+			wantErr: `TRUST_PROXY must be the number of reverse proxies in front of the server, got "true"`,
+		},
+		{
+			name:    "Negative proxy count",
+			extra:   map[string]string{"TRUST_PROXY": "-1"},
+			wantErr: "TRUST_PROXY must be the number",
+		},
+		{
 			name:    "Dev platform on Render",
 			extra:   map[string]string{"RENDER": "true"},
 			wantErr: "PLATFORM=dev is not allowed on Render",
@@ -46,7 +61,7 @@ func TestLoad(t *testing.T) {
 		{
 			name:  "Production platform on Render",
 			extra: map[string]string{"RENDER": "true", "PLATFORM": "production"},
-			want:  Config{DBURL: "postgres://localhost/chirpy", JWTSecret: "secret", PolkaKey: "polka", Platform: "production", Port: "9000", MigrateOnStart: true, TrustProxy: true},
+			want:  Config{DBURL: "postgres://localhost/chirpy", JWTSecret: "secret", PolkaKey: "polka", Platform: "production", Port: "9000", MigrateOnStart: true, TrustedProxies: 3},
 		},
 	}
 

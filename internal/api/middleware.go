@@ -96,7 +96,7 @@ func (a *API) logRequests(next http.Handler) http.Handler {
 			"method", r.Method,
 			"path", r.URL.Path,
 			"status", rec.status,
-			"client_ip", clientIP(r, a.trustProxy),
+			"client_ip", clientIP(r, a.trustedProxies),
 			"duration_ms", time.Since(start).Milliseconds(),
 		)
 	})

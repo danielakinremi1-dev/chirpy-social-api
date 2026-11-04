@@ -7,16 +7,20 @@ import (
 	"strings"
 )
 
-// clientIP returns the IP address of the client that sent r. Behind a trusted
-// reverse proxy it uses the last X-Forwarded-For entry, which the proxy
-// appended; earlier entries come from the client and can be forged. Without a
-// usable entry it falls back to the connection's address.
-func clientIP(r *http.Request, trustProxy bool) string {
-	if trustProxy {
-		// A request can carry several X-Forwarded-For lines; the last is the newest.
-		if lines := r.Header.Values("X-Forwarded-For"); len(lines) > 0 {
-			entries := strings.Split(lines[len(lines)-1], ",")
-			if addr, err := netip.ParseAddr(strings.TrimSpace(entries[len(entries)-1])); err == nil {
+// clientIP returns the IP address of the client that sent r. Each of the
+// trustedProxies reverse proxies in front of the server appends the address it
+// received the request from to X-Forwarded-For, so the client's address is
+// that many entries from the end; earlier entries come from the client and can
+// be forged. Without a usable entry it falls back to the connection's address.
+func clientIP(r *http.Request, trustedProxies int) string {
+	if trustedProxies > 0 {
+		// A request can carry several X-Forwarded-For lines; in order, they form one list.
+		var entries []string
+		for _, line := range r.Header.Values("X-Forwarded-For") {
+			entries = append(entries, strings.Split(line, ",")...)
+		}
+		if i := len(entries) - trustedProxies; i >= 0 {
+			if addr, err := netip.ParseAddr(strings.TrimSpace(entries[i])); err == nil {
 				return addr.String()
 			}
 		}

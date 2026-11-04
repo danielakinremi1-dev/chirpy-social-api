@@ -4,6 +4,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -15,9 +16,10 @@ type Config struct {
 	Port      string
 	// MigrateOnStart applies pending database migrations before serving.
 	MigrateOnStart bool
-	// TrustProxy takes the client IP from the X-Forwarded-For entry appended
-	// by the reverse proxy in front of the server, instead of the connection.
-	TrustProxy bool
+	// TrustedProxies is how many reverse proxies sit in front of the server.
+	// When it's above 0, the client IP comes from the X-Forwarded-For entry
+	// the outermost proxy appended, instead of from the connection.
+	TrustedProxies int
 }
 
 // Load reads the configuration using getenv, which is normally os.Getenv.
@@ -30,7 +32,6 @@ func Load(getenv func(string) string) (Config, error) {
 		Port:      getenv("PORT"),
 
 		MigrateOnStart: getenv("MIGRATE_ON_START") == "true",
-		TrustProxy:     getenv("TRUST_PROXY") == "true",
 	}
 	if cfg.Port == "" {
 		cfg.Port = "8080"
@@ -49,6 +50,14 @@ func Load(getenv func(string) string) (Config, error) {
 	}
 	if len(missing) > 0 {
 		return Config{}, fmt.Errorf("missing required environment variables: %s", strings.Join(missing, ", "))
+	}
+
+	if v := getenv("TRUST_PROXY"); v != "" && v != "false" {
+		n, err := strconv.Atoi(v)
+		if err != nil || n < 0 {
+			return Config{}, fmt.Errorf("TRUST_PROXY must be the number of reverse proxies in front of the server, got %q", v)
+		}
+		cfg.TrustedProxies = n
 	}
 
 	// PLATFORM=dev enables POST /admin/reset, which deletes every user. Render

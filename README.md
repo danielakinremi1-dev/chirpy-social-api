@@ -154,14 +154,14 @@ CI runs formatting, vet, golangci-lint, the full test suite with the race detect
 | `PLATFORM` | No | `dev` enables `POST /admin/reset`. The server refuses to start with `dev` on Render. |
 | `PORT` | No | Listen port. Default `8080`. |
 | `MIGRATE_ON_START` | No | `true` applies pending migrations at startup. |
-| `TRUST_PROXY` | No | `true` takes the client IP (for rate limiting and logs) from the last `X-Forwarded-For` entry, which the reverse proxy appends. Only enable it behind such a proxy. |
+| `TRUST_PROXY` | No | The number of reverse proxies in front of the server (`3` on Render). Each appends to `X-Forwarded-For`, so the client IP (for rate limiting and logs) is taken that many entries from the end, ignoring anything the client sent. Leave it unset when clients connect directly. |
 
 ## Deployment
 
 The [live API](https://chirpy-8n8c.onrender.com) runs on Render's free tier, defined in [render.yaml](render.yaml), with the database on Neon's free Postgres.
 
 - Render builds the Dockerfile and redeploys after CI passes on `main`.
-- Render generates `SECRET`; `DB_URL` and `POLKA_KEY` are set in its dashboard. `PLATFORM=production` and `TRUST_PROXY=true` come from `render.yaml`, and the server refuses to start with `PLATFORM=dev` on Render.
+- Render generates `SECRET`; `DB_URL` and `POLKA_KEY` are set in its dashboard. `PLATFORM=production` and `TRUST_PROXY=3` come from `render.yaml`, and the server refuses to start with `PLATFORM=dev` on Render.
 - Migrations are applied by hand with Neon's direct (non-pooled) connection string:
 
   ```sh

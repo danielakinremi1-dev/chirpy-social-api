@@ -12,9 +12,9 @@ import (
 
 // ipRateLimiter is a per-client-IP token bucket.
 type ipRateLimiter struct {
-	every      time.Duration
-	burst      int
-	trustProxy bool
+	every          time.Duration
+	burst          int
+	trustedProxies int
 
 	mu        sync.Mutex
 	clients   map[string]*clientLimiter
@@ -27,13 +27,13 @@ type clientLimiter struct {
 }
 
 // newIPRateLimiter allows each IP a burst of requests, refilled at one token
-// per every. trustProxy is passed to clientIP.
-func newIPRateLimiter(every time.Duration, burst int, trustProxy bool) *ipRateLimiter {
+// per every. trustedProxies is passed to clientIP.
+func newIPRateLimiter(every time.Duration, burst int, trustedProxies int) *ipRateLimiter {
 	return &ipRateLimiter{
-		every:      every,
-		burst:      burst,
-		trustProxy: trustProxy,
-		clients:    make(map[string]*clientLimiter),
+		every:          every,
+		burst:          burst,
+		trustedProxies: trustedProxies,
+		clients:        make(map[string]*clientLimiter),
 	}
 }
 
@@ -66,7 +66,7 @@ func (l *ipRateLimiter) allow(ip string) bool {
 // limit responds with 429 when the client IP has used up its requests.
 func (l *ipRateLimiter) limit(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !l.allow(clientIP(r, l.trustProxy)) {
+		if !l.allow(clientIP(r, l.trustedProxies)) {
 			w.Header().Set("Retry-After", fmt.Sprint(int(math.Ceil(l.every.Seconds()))))
 			respondWithError(w, r, http.StatusTooManyRequests, "Too many requests, try again later", nil)
 			return

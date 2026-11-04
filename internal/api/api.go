@@ -49,17 +49,17 @@ type API struct {
 	platform       string
 	fileserverHits atomic.Int32
 	loginLimiter   *ipRateLimiter
-	trustProxy     bool
+	trustedProxies int
 }
 
 func New(store Store, cfg config.Config) *API {
 	return &API{
-		store:      store,
-		jwtSecret:  cfg.JWTSecret,
-		polkaKey:   cfg.PolkaKey,
-		platform:   cfg.Platform,
-		trustProxy: cfg.TrustProxy,
+		store:          store,
+		jwtSecret:      cfg.JWTSecret,
+		polkaKey:       cfg.PolkaKey,
+		platform:       cfg.Platform,
+		trustedProxies: cfg.TrustedProxies,
 		// 10 attempts per IP, refilled at one every 6 seconds.
-		loginLimiter: newIPRateLimiter(6*time.Second, 10, cfg.TrustProxy),
+		loginLimiter: newIPRateLimiter(6*time.Second, 10, cfg.TrustedProxies),
 	}
 }
