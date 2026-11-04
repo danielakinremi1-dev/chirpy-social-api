@@ -5,6 +5,10 @@
 
 A microblogging REST API in Go and PostgreSQL, with JWT auth, rotating refresh tokens, cursor pagination, and tests against a real database.
 
+**Live:** <https://chirpy-8n8c.onrender.com> · [Interactive API docs](https://chirpy-8n8c.onrender.com/docs)
+
+> It runs on Render's free tier, which sleeps after 15 minutes without traffic, so the first request after a quiet spell can take up to a minute while it wakes. Requests after that are fast.
+
 Started from the [boot.dev](https://www.boot.dev) HTTP servers course; extended with refresh-token rotation, keyset pagination, a layered package structure, structured logging, rate limiting, an OpenAPI spec, Postgres integration tests, Docker, and CI.
 
 ## Quickstart
@@ -100,7 +104,7 @@ Full request and response schemas are in [api/openapi.yaml](api/openapi.yaml), o
 These use [jq](https://jqlang.org) to pull values out of responses.
 
 ```sh
-API=http://localhost:8080
+API=http://localhost:8080   # or https://chirpy-8n8c.onrender.com
 
 # Create an account and log in.
 curl -s -X POST $API/api/users -d '{"email":"ada@example.com","password":"correct-horse"}'
@@ -155,7 +159,7 @@ CI runs formatting, vet, golangci-lint, the full test suite with the race detect
 
 ## Deployment
 
-The live API runs on Render's free tier, defined in [render.yaml](render.yaml), with the database on Neon's free Postgres.
+The [live API](https://chirpy-8n8c.onrender.com) runs on Render's free tier, defined in [render.yaml](render.yaml), with the database on Neon's free Postgres.
 
 - Render builds the Dockerfile and redeploys after CI passes on `main`.
 - Render generates `SECRET`; `DB_URL` and `POLKA_KEY` are set in its dashboard. `PLATFORM=production` and `TRUST_PROXY=true` come from `render.yaml`, and the server refuses to start with `PLATFORM=dev` on Render.
