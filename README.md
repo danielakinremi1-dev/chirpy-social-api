@@ -93,6 +93,7 @@ Full request and response schemas are in [api/openapi.yaml](api/openapi.yaml), o
 | `GET /admin/metrics` | Visit count for the `/app/` page. |
 | `POST /admin/reset` | Delete all users and their data. Only when `PLATFORM=dev`. |
 | `GET /docs` | Swagger UI. |
+| `GET /` | Redirects to the landing page at `/app/`. |
 
 ### Examples
 

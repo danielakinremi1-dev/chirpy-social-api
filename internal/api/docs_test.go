@@ -46,7 +46,14 @@ func TestSpecMatchesRoutes(t *testing.T) {
 func TestDocsRoutes(t *testing.T) {
 	s := newTestServer(t)
 
-	rec := s.do("GET", "/docs", "", nil)
+	rec := s.do("GET", "/", "", nil)
+	expectStatus(t, rec, http.StatusFound)
+	if loc := rec.Header().Get("Location"); loc != "/app/" {
+		t.Errorf("/ redirects to %q, want /app/", loc)
+	}
+	expectStatus(t, s.do("GET", "/nope", "", nil), http.StatusNotFound)
+
+	rec = s.do("GET", "/docs", "", nil)
 	expectStatus(t, rec, http.StatusOK)
 	if !strings.Contains(rec.Body.String(), "/docs/openapi.yaml") {
 		t.Error("docs page doesn't load the spec")

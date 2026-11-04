@@ -11,6 +11,7 @@ import (
 func (a *API) Routes() http.Handler {
 	mux := http.NewServeMux()
 
+	mux.Handle("GET /{$}", http.RedirectHandler("/app/", http.StatusFound))
 	mux.Handle("/app/", http.StripPrefix("/app", a.metricsInc(http.FileServerFS(web.FS))))
 
 	mux.HandleFunc("GET /docs", handleDocs)
