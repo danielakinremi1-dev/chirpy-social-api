@@ -99,6 +99,17 @@ func (a *API) logRequests(next http.Handler) http.Handler {
 			"client_ip", clientIP(r, a.trustProxy),
 			"duration_ms", time.Since(start).Milliseconds(),
 		)
+		// TEMPORARY: find out which proxy headers Render sends. Remove after.
+		if a.trustProxy && r.URL.Path != "/api/healthz" {
+			slog.InfoContext(r.Context(), "proxy headers",
+				"remote_addr", r.RemoteAddr,
+				"x_forwarded_for", r.Header.Values("X-Forwarded-For"),
+				"true_client_ip", r.Header.Get("True-Client-IP"),
+				"cf_connecting_ip", r.Header.Get("CF-Connecting-IP"),
+				"x_real_ip", r.Header.Get("X-Real-IP"),
+				"forwarded", r.Header.Get("Forwarded"),
+			)
+		}
 	})
 }
 
