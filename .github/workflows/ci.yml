@@ -7,6 +7,9 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # lets the Codecov upload authenticate with OIDC instead of a token
     steps:
       - uses: actions/checkout@v7
 
@@ -33,6 +36,13 @@ jobs:
 
       - name: Test (unit and integration)
         run: go test -race -tags=integration -coverpkg=./internal/... -coverprofile=coverage.out ./...
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v7
+        with:
+          use_oidc: true
+          files: ./coverage.out
+          disable_search: true
 
       - name: Coverage
         run: |

@@ -1,6 +1,7 @@
 # Chirpy
 
 [![CI](https://github.com/danielakinremi1-dev/chirpy-social-api/actions/workflows/ci.yml/badge.svg)](https://github.com/danielakinremi1-dev/chirpy-social-api/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/danielakinremi1-dev/chirpy-social-api/graph/badge.svg)](https://codecov.io/gh/danielakinremi1-dev/chirpy-social-api)
 [![Go version](https://img.shields.io/github/go-mod/go-version/danielakinremi1-dev/chirpy-social-api)](go.mod)
 
 A microblogging REST API in Go and PostgreSQL, with JWT auth, rotating refresh tokens, cursor pagination, and tests against a real database.
@@ -141,7 +142,7 @@ make run
 | `make sqlc` | Regenerate `internal/database` from `sql/queries`. |
 | `make docker-up` / `docker-down` | Start or stop the Compose stack. |
 
-CI runs formatting, vet, golangci-lint, the full test suite with the race detector and integration tests, a coverage check (fails below 70%), and `sqlc diff` on every push and pull request.
+CI runs formatting, vet, golangci-lint, the full test suite with the race detector and integration tests, a coverage check (fails below 70%, with the report uploaded to Codecov), and `sqlc diff` on every push and pull request.
 
 ### Configuration
 

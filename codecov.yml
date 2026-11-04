@@ -1,0 +1,10 @@
+# The 70% gate in CI is the enforced check. Codecov's statuses only report,
+# so a small coverage dip can't fail the checks Render waits on before deploying.
+coverage:
+  status:
+    project:
+      default:
+        informational: true
+    patch:
+      default:
+        informational: true
