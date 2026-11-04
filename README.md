@@ -9,8 +9,6 @@ A microblogging REST API in Go and PostgreSQL, with JWT auth, rotating refresh t
 
 > It runs on Render's free tier, which sleeps after 15 minutes without traffic, so the first request after a quiet spell can take up to a minute while it wakes. Requests after that are fast.
 
-Started from the [boot.dev](https://www.boot.dev) HTTP servers course; extended with refresh-token rotation, keyset pagination, a layered package structure, structured logging, rate limiting, an OpenAPI spec, Postgres integration tests, Docker, and CI.
-
 ## Quickstart
 
 With Docker installed:
